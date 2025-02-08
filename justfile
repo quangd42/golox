@@ -13,6 +13,5 @@ watch:
     --build.delay "100" \
     --build.exclude_dir "node_modules,sql,scripts,tests" \
     --build.include_ext "go" \
-    --build.exclude_regex "" \
     --build.stop_on_error "false" \
     --misc.clean_on_exit true
