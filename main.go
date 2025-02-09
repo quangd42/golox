@@ -65,7 +65,7 @@ func run(source []byte) {
 	scanner := lox.NewScanner(source)
 	tokens, err := scanner.ScanTokens()
 	if err != nil {
-		fmt.Printf("%v\n", err)
+		fmt.Printf("%#v\n", err)
 	}
 	fmt.Printf("%v\n", tokens)
 }

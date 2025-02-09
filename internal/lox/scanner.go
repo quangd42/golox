@@ -1,6 +1,11 @@
 package lox
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
+
+var ErrEOF = errors.New("EOF")
 
 type Scanner struct {
 	Source      []byte
@@ -86,6 +91,24 @@ func (s *Scanner) scanToken() error {
 			s.addToken(LESS)
 		}
 
+	case '/':
+		if s.match('/') {
+			// This is a comment, ignore every character until end of line '\n'
+			var c rune
+			var err error
+			for c != '\n' && !errors.Is(err, ErrEOF) {
+				s.advance()
+				c, err = s.peek()
+			}
+		} else {
+			s.addToken(SLASH)
+		}
+
+	// Ignore some white space
+	case ' ', '\t', '\r':
+	case '\n':
+		s.line++
+
 	default:
 		return fmt.Errorf("unexpected character: %s", string(char))
 	}
@@ -112,6 +135,14 @@ func (s *Scanner) addToken(t TokenType) {
 func (s *Scanner) addToken2(t TokenType) {
 	s.cursor++
 	s.addToken(t)
+}
+
+// peek returns the next rune without consuming it
+func (s Scanner) peek() (rune, error) {
+	if s.cursor >= len(s.Source) {
+		return 0, ErrEOF
+	}
+	return rune(s.Source[s.cursor]), nil
 }
 
 // match peeks at the next rune and returns whether it matches expected
