@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"github.com/quangd42/golox/internal/lox"
 )
 
 func main() {
@@ -60,9 +62,10 @@ func runPrompt() {
 
 // TODO: this is the core processor
 func run(source []byte) {
-	fmt.Print(string(source))
-}
-
-func report(line int, where, msg string) {
-	fmt.Printf("[line %d] Error %s: %s", line, where, msg)
+	scanner := lox.NewScanner(source)
+	tokens, err := scanner.ScanTokens()
+	if err != nil {
+		fmt.Printf("%v\n", err)
+	}
+	fmt.Printf("%v\n", tokens)
 }
