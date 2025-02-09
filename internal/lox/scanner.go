@@ -46,6 +46,7 @@ func (s *Scanner) isAtEnd() bool {
 }
 
 func (s *Scanner) scanToken() error {
+	defer s.updateLexemeStart()
 	char := s.advance()
 	switch char {
 	// Single-character tokens.
@@ -116,18 +117,25 @@ func (s *Scanner) scanToken() error {
 	case '\n':
 		s.line++
 
-		// Literals
+	// String
 	case '"':
 		return s.addTokenString()
+
 	default:
 		switch {
 		case isDigit(char):
 			return s.addTokenNumber()
+		case isAlpha(char):
+			return s.addTokenIdentifier()
+		default:
+			return fmt.Errorf("unexpected character: %s", string(char))
 		}
-		return fmt.Errorf("unexpected character: %s", string(char))
 	}
-	s.lexemeStart = s.cursor
 	return nil
+}
+
+func (s *Scanner) updateLexemeStart() {
+	s.lexemeStart = s.cursor
 }
 
 // advance **consumes** a character and returns it
@@ -221,5 +229,26 @@ func (s *Scanner) addTokenNumber() error {
 		return ErrInvalidNumber
 	}
 	s.addToken(NUMBER, num)
+	return nil
+}
+
+func (s *Scanner) addTokenIdentifier() error {
+	for {
+		c, err := s.peek()
+		if errors.Is(err, ErrEOF) {
+			break
+		}
+		if !isAlphaNum(c) {
+			break
+		}
+		s.advance()
+	}
+	lex := string(s.Source[s.lexemeStart:s.cursor])
+	tt, err := getKeywords(lex)
+	if err != nil {
+		s.addToken(IDENTIFIER, lex)
+	} else {
+		s.addToken(tt, lex)
+	}
 	return nil
 }
