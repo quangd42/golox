@@ -56,16 +56,21 @@ func runPrompt() {
 			log.Fatalf("input error %v: ", err)
 		}
 
-		run(input[:len(input)-1]) // Remove \n from input before running
+		err = run(input[:len(input)-1]) // Remove \n from input before running
+		if err != nil {
+			os.Exit(65)
+		}
 	}
 }
 
 // TODO: this is the core processor
-func run(source []byte) {
+func run(source []byte) error {
 	scanner := lox.NewScanner(source)
 	tokens, err := scanner.ScanTokens()
 	if err != nil {
 		fmt.Printf("%#v\n", err)
+		return err
 	}
 	fmt.Printf("%v\n", tokens)
+	return nil
 }
