@@ -5,7 +5,10 @@ import (
 	"fmt"
 )
 
-var ErrEOF = errors.New("EOF")
+var (
+	ErrEOF                = errors.New("EOF")
+	ErrUnterminatedString = errors.New("unterminated string")
+)
 
 type Scanner struct {
 	Source      []byte
@@ -45,63 +48,64 @@ func (s *Scanner) scanToken() error {
 	switch char {
 	// Single-character tokens.
 	case '(':
-		s.addToken(LEFT_PAREN)
+		s.addToken(LEFT_PAREN, nil)
 	case ')':
-		s.addToken(RIGHT_PAREN)
+		s.addToken(RIGHT_PAREN, nil)
 	case '{':
-		s.addToken(LEFT_BRACE)
+		s.addToken(LEFT_BRACE, nil)
 	case '}':
-		s.addToken(RIGHT_BRACE)
+		s.addToken(RIGHT_BRACE, nil)
 	case ',':
-		s.addToken(COMMA)
+		s.addToken(COMMA, nil)
 	case '.':
-		s.addToken(DOT)
+		s.addToken(DOT, nil)
 	case '-':
-		s.addToken(MINUS)
+		s.addToken(MINUS, nil)
 	case '+':
-		s.addToken(PLUS)
+		s.addToken(PLUS, nil)
 	case ';':
-		s.addToken(SEMICOLON)
+		s.addToken(SEMICOLON, nil)
 	case '*':
-		s.addToken(STAR)
+		s.addToken(STAR, nil)
 
 	// One or two character tokens.
 	case '!':
 		if s.match('=') {
-			s.addToken2(BANG_EQUAL)
+			s.addToken2(BANG_EQUAL, nil)
 		} else {
-			s.addToken(BANG)
+			s.addToken(BANG, nil)
 		}
 	case '=':
 		if s.match('=') {
-			s.addToken2(EQUAL_EQUAL)
+			s.addToken2(EQUAL_EQUAL, nil)
 		} else {
-			s.addToken(EQUAL)
+			s.addToken(EQUAL, nil)
 		}
 	case '>':
 		if s.match('=') {
-			s.addToken2(GREATER_EQUAL)
+			s.addToken2(GREATER_EQUAL, nil)
 		} else {
-			s.addToken(GREATER)
+			s.addToken(GREATER, nil)
 		}
 	case '<':
 		if s.match('=') {
-			s.addToken2(LESS_EQUAL)
+			s.addToken2(LESS_EQUAL, nil)
 		} else {
-			s.addToken(LESS)
+			s.addToken(LESS, nil)
 		}
 
 	case '/':
 		if s.match('/') {
 			// This is a comment, ignore every character until end of line '\n'
-			var c rune
-			var err error
-			for c != '\n' && !errors.Is(err, ErrEOF) {
+			for {
 				s.advance()
-				c, err = s.peek()
+				c, err := s.peek()
+				if c == '\n' || errors.Is(err, ErrEOF) {
+					break
+				}
 			}
 		} else {
-			s.addToken(SLASH)
+			s.addToken(SLASH, nil)
 		}
 
 	// Ignore some white space
@@ -109,6 +113,9 @@ func (s *Scanner) scanToken() error {
 	case '\n':
 		s.line++
 
+		// Literals
+	case '"':
+		return s.makeString()
 	default:
 		return fmt.Errorf("unexpected character: %s", string(char))
 	}
@@ -123,18 +130,19 @@ func (s *Scanner) advance() rune {
 	return rune(out)
 }
 
-func (s *Scanner) addToken(t TokenType) {
+func (s *Scanner) addToken(t TokenType, literals any) {
 	s.Tokens = append(s.Tokens, Token{
-		Type:   t,
-		Lexeme: string(s.Source[s.lexemeStart:s.cursor]),
-		Line:   s.line,
+		Type:     t,
+		Lexeme:   string(s.Source[s.lexemeStart:s.cursor]),
+		Literals: literals,
+		Line:     s.line,
 	})
 }
 
 // addToken2 calls addToken and consumes 1 addtional character
-func (s *Scanner) addToken2(t TokenType) {
+func (s *Scanner) addToken2(t TokenType, literals any) {
 	s.cursor++
-	s.addToken(t)
+	s.addToken(t, literals)
 }
 
 // peek returns the next rune without consuming it
@@ -151,4 +159,25 @@ func (s Scanner) match(expected rune) bool {
 		return false
 	}
 	return s.Source[s.cursor] == byte(expected)
+}
+
+func (s *Scanner) makeString() error {
+	for {
+		c, err := s.peek()
+		if errors.Is(err, ErrEOF) {
+			return ErrUnterminatedString
+		}
+		if c == '\n' {
+			s.line++
+		}
+		if c == '"' {
+			// consume closing '"'
+			s.advance()
+			// trim surrounding quotes
+			s.addToken(STRING, s.Source[s.lexemeStart+1:s.cursor])
+			break
+		}
+		s.advance()
+	}
+	return nil
 }

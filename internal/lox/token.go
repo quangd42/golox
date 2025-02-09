@@ -115,9 +115,10 @@ func (tt TokenType) String() string {
 }
 
 type Token struct {
-	Type   TokenType
-	Lexeme string
-	Line   int
+	Type     TokenType
+	Lexeme   string
+	Literals any
+	Line     int
 }
 
 func (t Token) String() string {
