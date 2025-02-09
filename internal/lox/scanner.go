@@ -3,11 +3,13 @@ package lox
 import (
 	"errors"
 	"fmt"
+	"strconv"
 )
 
 var (
 	ErrEOF                = errors.New("EOF")
 	ErrUnterminatedString = errors.New("unterminated string")
+	ErrInvalidNumber      = errors.New("invalid number")
 )
 
 type Scanner struct {
@@ -110,13 +112,18 @@ func (s *Scanner) scanToken() error {
 
 	// Ignore some white space
 	case ' ', '\t', '\r':
+	// New line
 	case '\n':
 		s.line++
 
 		// Literals
 	case '"':
-		return s.makeString()
+		return s.addTokenString()
 	default:
+		switch {
+		case isDigit(char):
+			return s.addTokenNumber()
+		}
 		return fmt.Errorf("unexpected character: %s", string(char))
 	}
 	s.lexemeStart = s.cursor
@@ -161,7 +168,7 @@ func (s Scanner) match(expected rune) bool {
 	return s.Source[s.cursor] == byte(expected)
 }
 
-func (s *Scanner) makeString() error {
+func (s *Scanner) addTokenString() error {
 	for {
 		c, err := s.peek()
 		if errors.Is(err, ErrEOF) {
@@ -179,5 +186,40 @@ func (s *Scanner) makeString() error {
 		}
 		s.advance()
 	}
+	return nil
+}
+
+func (s *Scanner) addTokenNumber() error {
+	var isFloat bool
+	for {
+		c, err := s.peek()
+		if errors.Is(err, ErrEOF) {
+			return ErrUnterminatedString
+		}
+		if !isDigit(c) && c != '.' {
+			break
+		}
+		if c == '.' {
+			if !isFloat {
+				isFloat = true
+			} else {
+				// TODO: report error with line number
+				return ErrInvalidNumber
+			}
+		}
+		s.advance()
+	}
+	numStr := string(s.Source[s.lexemeStart:s.cursor])
+	var num any
+	var err error
+	if isFloat {
+		num, err = strconv.ParseFloat(numStr, 32)
+	} else {
+		num, err = strconv.Atoi(numStr)
+	}
+	if err != nil {
+		return ErrInvalidNumber
+	}
+	s.addToken(NUMBER, num)
 	return nil
 }
