@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 
 	"github.com/quangd42/golox/internal/lox"
@@ -16,28 +15,30 @@ func main() {
 		println("Usage: golox [script]")
 		os.Exit(64)
 	} else if len(os.Args) == 2 {
-		err := runFile(os.Args[1])
-		if err != nil {
-			os.Exit(65)
-		}
+		runFile(os.Args[1])
 	} else {
 		runPrompt()
 	}
 }
 
-func runFile(filename string) error {
+func runFile(filename string) {
 	f, err := os.Open(filename)
 	if err != nil {
-		return err
+		fmt.Printf("can't open file '%s': %v\n", filename, err)
+		os.Exit(2)
 	}
 
 	b, err := io.ReadAll(f)
 	if err != nil {
-		return err
+		fmt.Printf("can't read file '%s': %v\n", filename, err)
+		os.Exit(2)
 	}
 
-	run(b)
-	return nil
+	err = run(b)
+	if err != nil {
+		fmt.Printf("%v\n", err)
+		os.Exit(65)
+	}
 }
 
 func runPrompt() {
@@ -53,11 +54,13 @@ func runPrompt() {
 			if errors.Is(err, io.EOF) {
 				os.Exit(0)
 			}
-			log.Fatalf("input error %v: ", err)
+
+			continue // If err != nil delim is missing from input, so keep scanning for more
 		}
 
-		err = run(input[:len(input)-1]) // Remove \n from input before running
+		err = run(input[:len(input)-1]) // Remove delim \n from input before running
 		if err != nil {
+			fmt.Printf("%v\n", err)
 			os.Exit(65)
 		}
 	}
@@ -68,9 +71,9 @@ func run(source []byte) error {
 	scanner := lox.NewScanner(source)
 	tokens, err := scanner.ScanTokens()
 	if err != nil {
-		fmt.Printf("%#v\n", err)
 		return err
 	}
+
 	fmt.Printf("%v\n", tokens)
 	return nil
 }

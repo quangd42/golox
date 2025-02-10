@@ -2,15 +2,10 @@ package lox
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 )
 
-var (
-	ErrEOF                = errors.New("EOF")
-	ErrUnterminatedString = errors.New("unterminated string")
-	ErrInvalidNumber      = errors.New("invalid number")
-)
+var ErrEOF = errors.New("EOF")
 
 type Scanner struct {
 	Source      []byte
@@ -128,7 +123,7 @@ func (s *Scanner) scanToken() error {
 		case isAlpha(char):
 			return s.addTokenIdentifier()
 		default:
-			return fmt.Errorf("unexpected character: %s", string(char))
+			return errUnsupportedCharacter(char, s.line)
 		}
 	}
 	return nil
@@ -145,6 +140,7 @@ func (s *Scanner) advance() rune {
 	return rune(out)
 }
 
+// addToken appends a new token to the scanner's internal tokens
 func (s *Scanner) addToken(t TokenType, literals any) {
 	s.Tokens = append(s.Tokens, Token{
 		Type:     t,
@@ -180,7 +176,7 @@ func (s *Scanner) addTokenString() error {
 	for {
 		c, err := s.peek()
 		if errors.Is(err, ErrEOF) {
-			return ErrUnterminatedString
+			return errUnterminatedString(s.line)
 		}
 		if c == '\n' {
 			s.line++
@@ -202,7 +198,7 @@ func (s *Scanner) addTokenNumber() error {
 	for {
 		c, err := s.peek()
 		if errors.Is(err, ErrEOF) {
-			return ErrUnterminatedString
+			return errUnterminatedString(s.line)
 		}
 		if !isDigit(c) && c != '.' {
 			break
@@ -211,8 +207,7 @@ func (s *Scanner) addTokenNumber() error {
 			if !isFloat {
 				isFloat = true
 			} else {
-				// TODO: report error with line number
-				return ErrInvalidNumber
+				return errInvalidNumber(s.line)
 			}
 		}
 		s.advance()
@@ -226,7 +221,7 @@ func (s *Scanner) addTokenNumber() error {
 		num, err = strconv.Atoi(numStr)
 	}
 	if err != nil {
-		return ErrInvalidNumber
+		return errInvalidNumber(s.line)
 	}
 	s.addToken(NUMBER, num)
 	return nil
