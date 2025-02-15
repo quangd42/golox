@@ -5,12 +5,12 @@ import (
 	"fmt"
 )
 
-type TokenType int
+type tokenType int
 
 const (
 	// Single-character tokens.
 
-	LEFT_PAREN TokenType = iota + 1 // reserve 0 for empty value
+	LEFT_PAREN tokenType = iota + 1 // reserve 0 for empty value
 	RIGHT_PAREN
 	LEFT_BRACE
 	RIGHT_BRACE
@@ -62,7 +62,7 @@ const (
 	EOF
 )
 
-func (tt TokenType) String() string {
+func (tt tokenType) String() string {
 	names := []string{
 		// Emtpy value
 		"",
@@ -120,21 +120,21 @@ func (tt TokenType) String() string {
 	return names[int(tt)]
 }
 
-type Token struct {
-	Type     TokenType
-	Lexeme   string
-	Literals any
-	Line     int
+type token struct {
+	tokenType tokenType
+	lexeme    string
+	literal   any
+	line      int
 }
 
-func (t Token) String() string {
-	return fmt.Sprintf("%s %s", t.Type, t.Lexeme)
+func (t token) String() string {
+	return fmt.Sprintf("%s %s", t.tokenType, t.lexeme)
 }
 
 // getKeywords returns the TokenType if the provided lexeme
 // is a reserved keyword, and returns an error otherwise
-func getKeywords(lex string) (TokenType, error) {
-	keywords := map[string]TokenType{
+func getKeywords(lex string) (tokenType, error) {
+	keywords := map[string]tokenType{
 		"and":    AND,
 		"class":  CLASS,
 		"else":   ELSE,

@@ -8,40 +8,40 @@ import (
 var ErrEOF = errors.New("EOF")
 
 type Scanner struct {
-	Source      []byte
-	Tokens      []Token
-	line        int
-	cursor      int
-	lexemeStart int
+	Tokens  []token
+	source  []byte
+	line    int
+	current int
+	start   int
 }
 
 func NewScanner(source []byte) *Scanner {
 	return &Scanner{
-		Source: source,
+		source: source,
 	}
 }
 
-func (s *Scanner) ScanTokens() ([]Token, error) {
+func (s *Scanner) ScanTokens() ([]token, error) {
 	for !s.isAtEnd() {
 		err := s.scanToken()
 		if err != nil {
 			return nil, err
 		}
 	}
-	s.Tokens = append(s.Tokens, Token{
-		Type:   EOF,
-		Lexeme: "",
-		Line:   s.line,
+	s.Tokens = append(s.Tokens, token{
+		tokenType: EOF,
+		lexeme:    "",
+		line:      s.line,
 	})
 	return s.Tokens, nil
 }
 
 func (s *Scanner) isAtEnd() bool {
-	return s.cursor >= len(s.Source)
+	return s.current >= len(s.source)
 }
 
 func (s *Scanner) scanToken() error {
-	defer s.updateLexemeStart()
+	defer s.startNextLexeme()
 	char := s.advance()
 	switch char {
 	// Single-character tokens.
@@ -129,47 +129,51 @@ func (s *Scanner) scanToken() error {
 	return nil
 }
 
-func (s *Scanner) updateLexemeStart() {
-	s.lexemeStart = s.cursor
+func (s *Scanner) startNextLexeme() {
+	s.start = s.current
+}
+
+func (s Scanner) makeLexeme() string {
+	return string(s.source[s.start:s.current])
 }
 
 // advance **consumes** a character and returns it
 func (s *Scanner) advance() rune {
-	out := s.Source[s.cursor]
-	s.cursor++
+	out := s.source[s.current]
+	s.current++
 	return rune(out)
 }
 
 // addToken appends a new token to the scanner's internal tokens
-func (s *Scanner) addToken(t TokenType, literals any) {
-	s.Tokens = append(s.Tokens, Token{
-		Type:     t,
-		Lexeme:   string(s.Source[s.lexemeStart:s.cursor]),
-		Literals: literals,
-		Line:     s.line,
+func (s *Scanner) addToken(t tokenType, literal any) {
+	s.Tokens = append(s.Tokens, token{
+		tokenType: t,
+		lexeme:    s.makeLexeme(),
+		literal:   literal,
+		line:      s.line,
 	})
 }
 
 // addToken2 calls addToken and consumes 1 addtional character
-func (s *Scanner) addToken2(t TokenType, literals any) {
-	s.cursor++
-	s.addToken(t, literals)
+func (s *Scanner) addToken2(t tokenType, literal any) {
+	s.current++
+	s.addToken(t, literal)
 }
 
 // peek returns the next rune without consuming it
 func (s Scanner) peek() (rune, error) {
-	if s.cursor >= len(s.Source) {
+	if s.current >= len(s.source) {
 		return 0, ErrEOF
 	}
-	return rune(s.Source[s.cursor]), nil
+	return rune(s.source[s.current]), nil
 }
 
 // match peeks at the next rune and returns whether it matches expected
 func (s Scanner) match(expected rune) bool {
-	if s.cursor >= len(s.Source) {
+	if s.current >= len(s.source) {
 		return false
 	}
-	return s.Source[s.cursor] == byte(expected)
+	return s.source[s.current] == byte(expected)
 }
 
 func (s *Scanner) addTokenString() error {
@@ -185,7 +189,7 @@ func (s *Scanner) addTokenString() error {
 			// consume closing '"'
 			s.advance()
 			// trim surrounding quotes
-			s.addToken(STRING, s.Source[s.lexemeStart+1:s.cursor])
+			s.addToken(STRING, string(s.source[s.start+1:s.current-1]))
 			break
 		}
 		s.advance()
@@ -212,13 +216,13 @@ func (s *Scanner) addTokenNumber() error {
 		}
 		s.advance()
 	}
-	numStr := string(s.Source[s.lexemeStart:s.cursor])
+	lex := s.makeLexeme()
 	var num any
 	var err error
 	if isFloat {
-		num, err = strconv.ParseFloat(numStr, 32)
+		num, err = strconv.ParseFloat(lex, 32)
 	} else {
-		num, err = strconv.Atoi(numStr)
+		num, err = strconv.Atoi(lex)
 	}
 	if err != nil {
 		return errInvalidNumber(s.line)
@@ -238,7 +242,7 @@ func (s *Scanner) addTokenIdentifier() error {
 		}
 		s.advance()
 	}
-	lex := string(s.Source[s.lexemeStart:s.cursor])
+	lex := s.makeLexeme()
 	tt, err := getKeywords(lex)
 	if err != nil {
 		s.addToken(IDENTIFIER, lex)
