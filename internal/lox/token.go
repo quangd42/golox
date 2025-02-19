@@ -50,7 +50,6 @@ const (
 	IF
 	NIL
 	OR
-
 	PRINT
 	RETURN
 	SUPER
@@ -82,6 +81,7 @@ func (tt tokenType) String() string {
 		"STAR",
 
 		// One or two character tokens.
+
 		"BANG",
 		"BANG_EQUAL",
 		"EQUAL,",
@@ -92,11 +92,13 @@ func (tt tokenType) String() string {
 		"LESS_EQUAL",
 
 		// Literals.
+
 		"IDENTIFIER",
 		"STRING",
 		"NUMBER",
 
 		// Keywords.
+
 		"AND",
 		"CLASS",
 		"ELSE",
@@ -125,6 +127,21 @@ type token struct {
 	lexeme    string
 	literal   any
 	line      int
+}
+
+func newToken(tokenType tokenType, lexeme string, literal any, line int) token {
+	return token{
+		tokenType: tokenType,
+		lexeme:    lexeme,
+		literal:   literal,
+		line:      line,
+	}
+}
+
+// newTokenNoLiteral is a convenient function to create a token with no literal value
+// this is mostly useful for tests
+func newTokenNoLiteral(tokenType tokenType) token {
+	return newToken(tokenType, tokenType.String(), nil, 0)
 }
 
 func (t token) String() string {

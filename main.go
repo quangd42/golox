@@ -66,7 +66,6 @@ func runPrompt() {
 	}
 }
 
-// TODO: this is the core processor
 func run(source []byte) error {
 	scanner := lox.NewScanner(source)
 	tokens, err := scanner.ScanTokens()

@@ -16,9 +16,7 @@ type Scanner struct {
 }
 
 func NewScanner(source []byte) *Scanner {
-	return &Scanner{
-		source: source,
-	}
+	return &Scanner{source: source}
 }
 
 func (s *Scanner) ScanTokens() ([]token, error) {
@@ -28,11 +26,7 @@ func (s *Scanner) ScanTokens() ([]token, error) {
 			return nil, err
 		}
 	}
-	s.Tokens = append(s.Tokens, token{
-		tokenType: EOF,
-		lexeme:    "",
-		line:      s.line,
-	})
+	s.Tokens = append(s.Tokens, newToken(EOF, "", nil, s.line))
 	return s.Tokens, nil
 }
 
@@ -146,12 +140,7 @@ func (s *Scanner) advance() rune {
 
 // addToken appends a new token to the scanner's internal tokens
 func (s *Scanner) addToken(t tokenType, literal any) {
-	s.Tokens = append(s.Tokens, token{
-		tokenType: t,
-		lexeme:    s.makeLexeme(),
-		literal:   literal,
-		line:      s.line,
-	})
+	s.Tokens = append(s.Tokens, newToken(t, s.makeLexeme(), literal, s.line))
 }
 
 // addToken2 calls addToken and consumes 1 addtional character
@@ -160,17 +149,17 @@ func (s *Scanner) addToken2(t tokenType, literal any) {
 	s.addToken(t, literal)
 }
 
-// peek returns the next rune without consuming it
+// peek returns the current rune without consuming it
 func (s Scanner) peek() (rune, error) {
-	if s.current >= len(s.source) {
+	if s.isAtEnd() {
 		return 0, ErrEOF
 	}
 	return rune(s.source[s.current]), nil
 }
 
-// match peeks at the next rune and returns whether it matches expected
+// match peeks at the current rune and returns whether it matches expected
 func (s Scanner) match(expected rune) bool {
-	if s.current >= len(s.source) {
+	if s.isAtEnd() {
 		return false
 	}
 	return s.source[s.current] == byte(expected)
