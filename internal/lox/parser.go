@@ -25,7 +25,7 @@ func (p *Parser) expression() (expr, error) {
 
 func (p *Parser) equality() (expr, error) {
 	// TODO:this should be comparision()
-	out, err := p.primary()
+	out, err := p.unary()
 	if err != nil {
 		return nil, err
 	}
@@ -34,6 +34,22 @@ func (p *Parser) equality() (expr, error) {
 }
 
 // ... some more levels
+
+// unary → ( "!" | "-" ) unary | primary ;
+func (p *Parser) unary() (expr, error) {
+	if p.match(BANG, MINUS) {
+		oper, err := p.advance()
+		if err != nil {
+			return nil, err
+		}
+		next, err := p.unary()
+		if err != nil {
+			return nil, err
+		}
+		return unaryExpr{operator: oper, right: next}, nil
+	}
+	return p.primary()
+}
 
 // TODO: reduce duplicate p.advance() in each case
 

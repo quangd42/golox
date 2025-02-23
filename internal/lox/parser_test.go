@@ -47,3 +47,46 @@ func Test_primary(t *testing.T) {
 		})
 	}
 }
+
+func Test_unary(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+	}{
+		{
+			desc:  "BANG",
+			input: []token{newTokenNoLiteral(BANG), newTokenNoLiteral(TRUE)},
+			want:  unaryExpr{operator: newTokenNoLiteral(BANG), right: literalExpr{true}},
+		},
+		{
+			desc:  "MINUS",
+			input: []token{newTokenNoLiteral(MINUS), newToken(NUMBER, "56.19", 56.19, 0)},
+			want:  unaryExpr{operator: newTokenNoLiteral(MINUS), right: literalExpr{56.19}},
+		},
+		{
+			desc:  "NESTED",
+			input: []token{newTokenNoLiteral(BANG), newTokenNoLiteral(MINUS), newTokenNoLiteral(BANG), newTokenNoLiteral(TRUE)},
+			want: unaryExpr{
+				operator: newTokenNoLiteral(BANG),
+				right: unaryExpr{
+					operator: newTokenNoLiteral(MINUS),
+					right: unaryExpr{
+						operator: newTokenNoLiteral(BANG),
+						right:    literalExpr{true},
+					},
+				},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.unary()
+			if err != nil {
+				t.Error(err)
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
