@@ -25,7 +25,7 @@ func (p *Parser) expression() (expr, error) {
 
 func (p *Parser) equality() (expr, error) {
 	// TODO:this should be comparision()
-	out, err := p.unary()
+	out, err := p.factor()
 	if err != nil {
 		return nil, err
 	}
@@ -34,6 +34,30 @@ func (p *Parser) equality() (expr, error) {
 }
 
 // ... some more levels
+
+// factor → unary ( ( "/" | "*" ) unary )* ;
+func (p *Parser) factor() (expr, error) {
+	out, err := p.unary()
+	if err != nil {
+		return nil, err
+	}
+	for p.match(SLASH, STAR) {
+		oper, err := p.advance()
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.unary()
+		if err != nil {
+			return nil, err
+		}
+		out = binaryExpr{
+			left:     out,
+			operator: oper,
+			right:    right,
+		}
+	}
+	return out, nil
+}
 
 // unary → ( "!" | "-" ) unary | primary ;
 func (p *Parser) unary() (expr, error) {
