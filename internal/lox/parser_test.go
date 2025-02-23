@@ -144,3 +144,82 @@ func Test_factor(t *testing.T) {
 		})
 	}
 }
+
+func Test_term(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+	}{
+		{
+			desc:  "MINUS",
+			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(MINUS), newToken(NUMBER, "9", 9, 0)},
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(MINUS), right: literalExpr{9}},
+		},
+		{
+			desc:  "PLUS",
+			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(PLUS), newToken(NUMBER, "9", 9, 0)},
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(PLUS), right: literalExpr{9}},
+		},
+		{
+			desc: "MINUS_PLUS_MINUS",
+			input: []token{
+				newToken(NUMBER, "12", 12, 0),
+				newTokenNoLiteral(MINUS),
+				newToken(NUMBER, "9", 9, 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "78", 78, 0),
+				newTokenNoLiteral(MINUS),
+				newToken(NUMBER, "6", 6, 0),
+			},
+			want: binaryExpr{
+				left: binaryExpr{
+					left: binaryExpr{
+						left:     literalExpr{12},
+						operator: newTokenNoLiteral(MINUS),
+						right:    literalExpr{9},
+					},
+					operator: newTokenNoLiteral(PLUS),
+					right:    literalExpr{78},
+				},
+				operator: newTokenNoLiteral(MINUS),
+				right:    literalExpr{6},
+			},
+		},
+		{
+			desc: "MINUS_STAR_MINUS",
+			input: []token{
+				newToken(NUMBER, "12", 12, 0),
+				newTokenNoLiteral(MINUS),
+				newToken(NUMBER, "9", 9, 0),
+				newTokenNoLiteral(STAR),
+				newToken(NUMBER, "78", 78, 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "6", 6, 0),
+			},
+			want: binaryExpr{
+				left: binaryExpr{
+					left:     literalExpr{12},
+					operator: newTokenNoLiteral(MINUS),
+					right: binaryExpr{
+						left:     literalExpr{9},
+						operator: newTokenNoLiteral(STAR),
+						right:    literalExpr{78},
+					},
+				},
+				operator: newTokenNoLiteral(PLUS),
+				right:    literalExpr{6},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.term()
+			if err != nil {
+				t.Error(err)
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
