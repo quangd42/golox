@@ -5,6 +5,12 @@ build:
     go build -o bin/${BINARY_NAME} main.go
     export PATH="$PATH:/Users/quang-dang/Workspaces/golox/bin"
 
+test:
+    go test ./internal/lox/
+
+testv:
+    go test -v ./internal/lox/
+
 # Live reload > export PATH="$PATH:/Users/quang-dang/Workspaces/golox/tmp/bin"
 watch:
     go run github.com/air-verse/air@v1.52.3 \
