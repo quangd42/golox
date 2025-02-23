@@ -24,8 +24,7 @@ func (p *Parser) expression() (expr, error) {
 }
 
 func (p *Parser) equality() (expr, error) {
-	// TODO:this should be comparision()
-	out, err := p.term()
+	out, err := p.comparison()
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +32,29 @@ func (p *Parser) equality() (expr, error) {
 	return out, nil
 }
 
-// ... some more levels
+// comparison → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+func (p *Parser) comparison() (expr, error) {
+	out, err := p.term()
+	if err != nil {
+		return nil, err
+	}
+	for p.match(GREATER, GREATER_EQUAL, LESS, LESS_EQUAL) {
+		oper, err := p.advance()
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.term()
+		if err != nil {
+			return nil, err
+		}
+		out = binaryExpr{
+			left:     out,
+			operator: oper,
+			right:    right,
+		}
+	}
+	return out, nil
+}
 
 // term → factor ( ( "-" | "+" ) factor )* ;
 func (p *Parser) term() (expr, error) {

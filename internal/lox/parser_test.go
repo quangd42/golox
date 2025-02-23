@@ -223,3 +223,67 @@ func Test_term(t *testing.T) {
 		})
 	}
 }
+
+func Test_comparison(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+	}{
+		{
+			desc:  "GREATER",
+			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(GREATER), newToken(NUMBER, "9", 9, 0)},
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(GREATER), right: literalExpr{9}},
+		},
+		{
+			desc:  "GREATER_EQUAL",
+			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(GREATER_EQUAL), newToken(NUMBER, "9", 9, 0)},
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(GREATER_EQUAL), right: literalExpr{9}},
+		},
+		{
+			desc:  "LESS",
+			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(LESS), newToken(NUMBER, "9", 9, 0)},
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(LESS), right: literalExpr{9}},
+		},
+		{
+			desc:  "LESS_EQUAL",
+			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(LESS_EQUAL), newToken(NUMBER, "9", 9, 0)},
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(LESS_EQUAL), right: literalExpr{9}},
+		},
+		{
+			desc: "GREATER__LESS__GREATER_EQUAL",
+			input: []token{
+				newToken(NUMBER, "12", 12, 0),
+				newTokenNoLiteral(GREATER),
+				newToken(NUMBER, "9", 9, 0),
+				newTokenNoLiteral(LESS),
+				newToken(NUMBER, "78", 78, 0),
+				newTokenNoLiteral(GREATER_EQUAL),
+				newToken(NUMBER, "6", 6, 0),
+			},
+			want: binaryExpr{
+				left: binaryExpr{
+					left: binaryExpr{
+						left:     literalExpr{12},
+						operator: newTokenNoLiteral(GREATER),
+						right:    literalExpr{9},
+					},
+					operator: newTokenNoLiteral(LESS),
+					right:    literalExpr{78},
+				},
+				operator: newTokenNoLiteral(GREATER_EQUAL),
+				right:    literalExpr{6},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.comparison()
+			if err != nil {
+				t.Error(err)
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
