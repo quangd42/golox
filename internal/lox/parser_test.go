@@ -287,3 +287,57 @@ func Test_comparison(t *testing.T) {
 		})
 	}
 }
+
+func Test_equality(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+	}{
+		{
+			desc:  "BANG_EQUAL",
+			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(BANG_EQUAL), newToken(NUMBER, "9", 9, 0)},
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(BANG_EQUAL), right: literalExpr{9}},
+		},
+		{
+			desc:  "EQUAL_EQUAL",
+			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(EQUAL_EQUAL), newToken(NUMBER, "9", 9, 0)},
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(EQUAL_EQUAL), right: literalExpr{9}},
+		},
+		{
+			desc: "BANG_EQUAL__BANG_EQUAL__EQUAL_EQUAL",
+			input: []token{
+				newToken(NUMBER, "12", 12, 0),
+				newTokenNoLiteral(BANG_EQUAL),
+				newToken(NUMBER, "9", 9, 0),
+				newTokenNoLiteral(BANG_EQUAL),
+				newToken(NUMBER, "78", 78, 0),
+				newTokenNoLiteral(EQUAL_EQUAL),
+				newToken(NUMBER, "6", 6, 0),
+			},
+			want: binaryExpr{
+				left: binaryExpr{
+					left: binaryExpr{
+						left:     literalExpr{12},
+						operator: newTokenNoLiteral(BANG_EQUAL),
+						right:    literalExpr{9},
+					},
+					operator: newTokenNoLiteral(BANG_EQUAL),
+					right:    literalExpr{78},
+				},
+				operator: newTokenNoLiteral(EQUAL_EQUAL),
+				right:    literalExpr{6},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.equality()
+			if err != nil {
+				t.Error(err)
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}

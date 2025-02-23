@@ -19,16 +19,32 @@ func (p *Parser) Parse() (expr, error) {
 	return p.expression()
 }
 
+// expression → equality ;
 func (p *Parser) expression() (expr, error) {
 	return p.equality()
 }
 
+// equality → comparison ( ( "!=" | "==" ) comparison )* ;
 func (p *Parser) equality() (expr, error) {
 	out, err := p.comparison()
 	if err != nil {
 		return nil, err
 	}
-
+	for p.match(BANG_EQUAL, EQUAL_EQUAL) {
+		oper, err := p.advance()
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.comparison()
+		if err != nil {
+			return nil, err
+		}
+		out = binaryExpr{
+			left:     out,
+			operator: oper,
+			right:    right,
+		}
+	}
 	return out, nil
 }
 
