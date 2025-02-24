@@ -117,7 +117,7 @@ func (s *Scanner) scanToken() error {
 		case isAlpha(char):
 			return s.addTokenIdentifier()
 		default:
-			return errUnsupportedCharacter(char, s.line)
+			return errUnsupportedCharacter(s.line, char)
 		}
 	}
 	return nil
@@ -198,7 +198,7 @@ func (s *Scanner) addTokenNumber() error {
 			if !isFloat {
 				isFloat = true
 			} else {
-				return errInvalidNumber(s.line)
+				return errInvalidNumber(s.line, s.makeLexeme())
 			}
 		}
 		s.advance()
@@ -212,7 +212,7 @@ func (s *Scanner) addTokenNumber() error {
 		num, err = strconv.Atoi(lex)
 	}
 	if err != nil {
-		return errInvalidNumber(s.line)
+		return errInvalidNumber(s.line, lex)
 	}
 	s.addToken(NUMBER, num)
 	return nil

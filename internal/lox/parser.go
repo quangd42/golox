@@ -1,7 +1,6 @@
 package lox
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 )
@@ -162,7 +161,7 @@ func (p *Parser) primary() (expr, error) {
 		}
 		return groupingExpr{out}, nil
 	default:
-		return nil, fmt.Errorf("invalid token processed by primary(): %v", p.peek())
+		return nil, NewLoxError(tok.line, fmt.Sprintf("'%s'", tok.lexeme), "expected an expression")
 	}
 }
 

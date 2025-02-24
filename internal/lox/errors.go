@@ -11,10 +11,13 @@ type LoxError struct {
 }
 
 func (e LoxError) Error() string {
-	return fmt.Sprintf("[line %d] Error%s: %s", e.Line, e.Where, e.Msg)
+	if e.Where == "" {
+		return fmt.Sprintf("[line %d] Error: %s", e.Line, e.Msg)
+	}
+	return fmt.Sprintf("[line %d] Error at %s: %s", e.Line, e.Where, e.Msg)
 }
 
-func NewLoxError(msg, where string, line int) error {
+func NewLoxError(line int, where, msg string) error {
 	return LoxError{
 		Line:  line,
 		Msg:   msg,
@@ -22,14 +25,14 @@ func NewLoxError(msg, where string, line int) error {
 	}
 }
 
-func errUnsupportedCharacter(c rune, line int) error {
-	return NewLoxError(fmt.Sprintf("unsupported character: %s", string(c)), "", line)
+func errUnsupportedCharacter(line int, c rune) error {
+	return NewLoxError(line, string(c), "unsupported character")
 }
 
 func errUnterminatedString(line int) error {
-	return NewLoxError("unterminated string", "", line)
+	return NewLoxError(line, "", "unterminated string")
 }
 
-func errInvalidNumber(line int) error {
-	return NewLoxError("invalid number", "", line)
+func errInvalidNumber(line int, lex string) error {
+	return NewLoxError(line, lex, "invalid number")
 }
