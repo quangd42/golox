@@ -136,28 +136,22 @@ func (p *Parser) unary() (expr, error) {
 	return p.primary()
 }
 
-// TODO: reduce duplicate p.advance() in each case
-
 // primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
 func (p *Parser) primary() (expr, error) {
+	tok, err := p.advance()
+	if err != nil {
+		return nil, err
+	}
 	switch {
-	case p.match(TRUE):
-		p.advance()
+	case tok.hasType(TRUE):
 		return literalExpr{true}, nil
-	case p.match(FALSE):
-		p.advance()
+	case tok.hasType(FALSE):
 		return literalExpr{false}, nil
-	case p.match(NIL):
-		p.advance()
+	case tok.hasType(NIL):
 		return literalExpr{nil}, nil
-	case p.match(NUMBER, STRING):
-		out, err := p.advance()
-		if err != nil {
-			return nil, err
-		}
-		return literalExpr{out.literal}, nil
-	case p.match(LEFT_PAREN):
-		p.advance()
+	case tok.hasType(NUMBER, STRING):
+		return literalExpr{tok.literal}, nil
+	case tok.hasType(LEFT_PAREN):
 		err := p.consumeForward(RIGHT_PAREN)
 		if err != nil {
 			return nil, errors.New("expect ')' after expression")
@@ -206,7 +200,8 @@ func (p Parser) match(expected ...tokenType) bool {
 	return false
 }
 
-// peek returns the current token without consuming it
+// peek returns the current token without consuming it. Returns the last token
+// if there is no more token to peek at
 func (p Parser) peek() token {
 	if p.isAtEnd() {
 		return p.tokens[len(p.tokens)-1]

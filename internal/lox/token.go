@@ -148,6 +148,16 @@ func (t token) String() string {
 	return fmt.Sprintf("%s %s", t.tokenType, t.lexeme)
 }
 
+// hasType returns whether the tokenType is one of the expected.
+func (t token) hasType(expected ...tokenType) bool {
+	for _, tType := range expected {
+		if t.tokenType == tType {
+			return true
+		}
+	}
+	return false
+}
+
 // getKeywords returns the TokenType if the provided lexeme
 // is a reserved keyword, and returns an error otherwise
 func getKeywords(lex string) (tokenType, error) {
