@@ -2,7 +2,6 @@ package lox
 
 import (
 	"fmt"
-	"slices"
 )
 
 type Parser struct {
@@ -151,13 +150,13 @@ func (p *Parser) primary() (expr, error) {
 	case tok.hasType(NUMBER, STRING):
 		return literalExpr{tok.literal}, nil
 	case tok.hasType(LEFT_PAREN):
-		err := p.consumeForward(RIGHT_PAREN)
-		if err != nil {
-			return nil, errors.New("expect ')' after expression")
-		}
+		// TODO: parse empty group ()
 		out, err := p.expression()
 		if err != nil {
 			return nil, err
+		}
+		if !p.matchConsume(RIGHT_PAREN) {
+			return nil, NewLoxError(tok.line, fmt.Sprintf("'%s'", tok.lexeme), "expect ')' after expression")
 		}
 		return groupingExpr{out}, nil
 	default:
@@ -175,18 +174,12 @@ func (p *Parser) advance() (token, error) {
 	return out, nil
 }
 
-// PERF: this is not effiecient
-func (p *Parser) consumeForward(tokenType tokenType) error {
-	current := p.current
-	for !p.isAtEnd() {
-		if p.match(tokenType) {
-			p.tokens = slices.Delete(p.tokens, p.current, p.current+1)
-			p.current = current
-			return nil
-		}
-		p.current++
+func (p *Parser) matchConsume(tokenType tokenType) bool {
+	if p.match(tokenType) {
+		p.advance()
+		return true
 	}
-	return ErrEOF
+	return false
 }
 
 // match peeks at the current token to see if it is one of the expected tokens
