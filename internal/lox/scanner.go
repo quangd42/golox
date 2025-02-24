@@ -191,7 +191,7 @@ func (s *Scanner) addTokenNumber() error {
 	for {
 		c, err := s.peek()
 		if errors.Is(err, ErrEOF) {
-			return errUnterminatedString(s.line)
+			break
 		}
 		if !isDigit(c) && c != '.' {
 			break
@@ -209,7 +209,7 @@ func (s *Scanner) addTokenNumber() error {
 	var num any
 	var err error
 	if isFloat {
-		num, err = strconv.ParseFloat(lex, 32)
+		num, err = strconv.ParseFloat(lex, 64)
 	} else {
 		num, err = strconv.Atoi(lex)
 	}
@@ -234,9 +234,9 @@ func (s *Scanner) addTokenIdentifier() error {
 	lex := s.makeLexeme()
 	tt, err := getKeywords(lex)
 	if err != nil {
-		s.addToken(IDENTIFIER, lex)
+		s.addToken(IDENTIFIER, nil)
 	} else {
-		s.addToken(tt, lex)
+		s.addToken(tt, nil)
 	}
 	return nil
 }
