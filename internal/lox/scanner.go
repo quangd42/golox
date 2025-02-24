@@ -62,32 +62,32 @@ func (s *Scanner) scanToken() error {
 
 	// One or two character tokens.
 	case '!':
-		if s.match('=') {
-			s.addToken2(BANG_EQUAL, nil)
+		if s.matchConsume('=') {
+			s.addToken(BANG_EQUAL, nil)
 		} else {
 			s.addToken(BANG, nil)
 		}
 	case '=':
-		if s.match('=') {
-			s.addToken2(EQUAL_EQUAL, nil)
+		if s.matchConsume('=') {
+			s.addToken(EQUAL_EQUAL, nil)
 		} else {
 			s.addToken(EQUAL, nil)
 		}
 	case '>':
-		if s.match('=') {
-			s.addToken2(GREATER_EQUAL, nil)
+		if s.matchConsume('=') {
+			s.addToken(GREATER_EQUAL, nil)
 		} else {
 			s.addToken(GREATER, nil)
 		}
 	case '<':
-		if s.match('=') {
-			s.addToken2(LESS_EQUAL, nil)
+		if s.matchConsume('=') {
+			s.addToken(LESS_EQUAL, nil)
 		} else {
 			s.addToken(LESS, nil)
 		}
 
 	case '/':
-		if s.match('/') {
+		if s.matchConsume('/') {
 			// This is a comment, ignore every character until end of line '\n'
 			for {
 				s.advance()
@@ -133,20 +133,13 @@ func (s Scanner) makeLexeme() string {
 
 // advance **consumes** a character and returns it
 func (s *Scanner) advance() rune {
-	out := s.source[s.current]
 	s.current++
-	return rune(out)
+	return rune(s.source[s.current-1])
 }
 
 // addToken appends a new token to the scanner's internal tokens
 func (s *Scanner) addToken(t tokenType, literal any) {
 	s.Tokens = append(s.Tokens, newToken(t, s.makeLexeme(), literal, s.line))
-}
-
-// addToken2 calls addToken and consumes 1 addtional character
-func (s *Scanner) addToken2(t tokenType, literal any) {
-	s.current++
-	s.addToken(t, literal)
 }
 
 // peek returns the current rune without consuming it
@@ -157,12 +150,17 @@ func (s Scanner) peek() (rune, error) {
 	return rune(s.source[s.current]), nil
 }
 
-// match peeks at the current rune and returns whether it matches expected
-func (s Scanner) match(expected rune) bool {
+// matchConsume peeks at the current rune, if the current rune matches expected it is consumed.
+// returns whether expected rune was matched and consumed.
+func (s *Scanner) matchConsume(expected rune) bool {
 	if s.isAtEnd() {
 		return false
 	}
-	return s.source[s.current] == byte(expected)
+	if s.source[s.current] == byte(expected) {
+		s.advance()
+		return true
+	}
+	return false
 }
 
 func (s *Scanner) addTokenString() error {
