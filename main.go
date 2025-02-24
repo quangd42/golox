@@ -72,7 +72,17 @@ func run(source []byte) error {
 	if err != nil {
 		return err
 	}
+	parser := lox.NewParser(tokens)
+	expr, err := parser.Parse()
+	if err != nil {
+		return err
+	}
 
-	fmt.Printf("%v\n", tokens)
+	printer := lox.NewASTPrinter()
+	exprStr, err := printer.String(expr)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%v\n", exprStr)
 	return nil
 }
