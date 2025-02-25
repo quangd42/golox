@@ -49,12 +49,16 @@ func (s *Scanner) scanToken() error {
 		s.addToken(RIGHT_BRACE, nil)
 	case ',':
 		s.addToken(COMMA, nil)
+	case ':':
+		s.addToken(COLON, nil)
 	case '.':
 		s.addToken(DOT, nil)
 	case '-':
 		s.addToken(MINUS, nil)
 	case '+':
 		s.addToken(PLUS, nil)
+	case '?':
+		s.addToken(QUESTION, nil)
 	case ';':
 		s.addToken(SEMICOLON, nil)
 	case '*':

@@ -15,9 +15,11 @@ const (
 	LEFT_BRACE
 	RIGHT_BRACE
 	COMMA
+	COLON
 	DOT
 	MINUS
 	PLUS
+	QUESTION
 	SEMICOLON
 	SLASH
 	STAR
@@ -73,9 +75,11 @@ func (tt tokenType) String() string {
 		"LEFT_BRACE",
 		"RIGHT_BRACE",
 		"COMMA",
+		"COLON",
 		"DOT",
 		"MINUS",
 		"PLUS",
+		"QUESTION",
 		"SEMICOLON",
 		"SLASH",
 		"STAR",

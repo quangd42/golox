@@ -18,9 +18,9 @@ func (p *Parser) Parse() (expr, error) {
 	return p.expression()
 }
 
-// expression → equality ( "," equality )* ;
+// expression → ternary ( "," ternary )* ;
 func (p *Parser) expression() (expr, error) {
-	out, err := p.equality()
+	out, err := p.ternary()
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func (p *Parser) expression() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		right, err := p.equality()
+		right, err := p.ternary()
 		if err != nil {
 			return nil, err
 		}
@@ -37,6 +37,49 @@ func (p *Parser) expression() (expr, error) {
 			left:     out,
 			operator: oper,
 			right:    right,
+		}
+	}
+	return out, nil
+}
+
+// ternary → equality ( "?" ternary ":" ternary )? ;
+func (p *Parser) ternary() (expr, error) {
+	out, err := p.equality()
+	if err != nil {
+		return nil, err
+	}
+	if p.match(QUESTION) {
+		lOper, err := p.advance()
+		if err != nil {
+			return nil, err
+		}
+		trueExpr, err := p.ternary()
+		if err != nil {
+			return nil, err
+		}
+		rOper, err := p.advance()
+		if err != nil {
+			return nil, err
+		}
+		if !rOper.hasType(COLON) {
+			return nil, NewLoxError(
+				lOper.line,
+				fmt.Sprintf("'%s'", lOper.lexeme),
+				"expect ':' after expression",
+			)
+		}
+		falseExpr, err := p.ternary()
+		if err != nil {
+			return nil, err
+		}
+		out = binaryExpr{
+			left: binaryExpr{
+				left:     out,
+				operator: lOper,
+				right:    trueExpr,
+			},
+			operator: rOper,
+			right:    falseExpr,
 		}
 	}
 	return out, nil
@@ -176,7 +219,10 @@ func (p *Parser) primary() (expr, error) {
 			return nil, err
 		}
 		if !p.matchConsume(RIGHT_PAREN) {
-			return nil, NewLoxError(tok.line, fmt.Sprintf("'%s'", tok.lexeme), "expect ')' after expression")
+			return nil, NewLoxError(
+				tok.line,
+				fmt.Sprintf("'%s'", tok.lexeme),
+				"expect ')' after expression")
 		}
 		return groupingExpr{out}, nil
 	case tok.hasType(SLASH, STAR, MINUS, PLUS, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BANG, BANG_EQUAL):
@@ -184,9 +230,15 @@ func (p *Parser) primary() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return nil, NewLoxError(tok.line, fmt.Sprintf("'%s'", tok.lexeme), "expected left operand")
+		return nil, NewLoxError(
+			tok.line,
+			fmt.Sprintf("'%s'", tok.lexeme),
+			"expected left operand")
 	default:
-		return nil, NewLoxError(tok.line, fmt.Sprintf("'%s'", tok.lexeme), "expected an expression")
+		return nil, NewLoxError(
+			tok.line,
+			fmt.Sprintf("'%s'", tok.lexeme),
+			"expected an expression")
 	}
 }
 

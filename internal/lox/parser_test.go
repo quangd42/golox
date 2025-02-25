@@ -342,6 +342,134 @@ func Test_equality(t *testing.T) {
 	}
 }
 
+func Test_ternary(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+	}{
+		{
+			desc: "Simple_Ternary",
+			input: []token{
+				newToken(NUMBER, "23", 23, 0),
+				newTokenNoLiteral(EQUAL_EQUAL),
+				newToken(NUMBER, "2.3", 2.3, 0),
+				newTokenNoLiteral(QUESTION),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(COLON),
+				newTokenNoLiteral(FALSE),
+			},
+			want: binaryExpr{
+				left: binaryExpr{
+					left:     binaryExpr{left: literalExpr{23}, operator: newTokenNoLiteral(EQUAL_EQUAL), right: literalExpr{2.3}},
+					operator: newTokenNoLiteral(QUESTION),
+					right:    literalExpr{true},
+				},
+				operator: newTokenNoLiteral(COLON),
+				right:    literalExpr{false},
+			},
+		},
+		{
+			desc: "Nested_Ternary",
+			input: []token{
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(GREATER),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(QUESTION),
+				newTokenNoLiteral(LEFT_PAREN),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(QUESTION),
+				newTokenNoLiteral(FALSE),
+				newTokenNoLiteral(COLON),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(COLON),
+				newTokenNoLiteral(LEFT_PAREN),
+				newTokenNoLiteral(FALSE),
+				newTokenNoLiteral(QUESTION),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(COLON),
+				newTokenNoLiteral(NIL),
+				newTokenNoLiteral(RIGHT_PAREN),
+			},
+			want: binaryExpr{
+				left: binaryExpr{
+					left:     binaryExpr{left: literalExpr{10}, operator: newTokenNoLiteral(GREATER), right: literalExpr{5}},
+					operator: newTokenNoLiteral(QUESTION),
+					right: groupingExpr{
+						binaryExpr{
+							left: binaryExpr{
+								left:     literalExpr{true},
+								operator: newTokenNoLiteral(QUESTION),
+								right:    literalExpr{false},
+							},
+							operator: newTokenNoLiteral(COLON),
+							right:    literalExpr{true},
+						},
+					},
+				},
+				operator: newTokenNoLiteral(COLON),
+				right: groupingExpr{
+					binaryExpr{
+						left: binaryExpr{
+							left:     literalExpr{false},
+							operator: newTokenNoLiteral(QUESTION),
+							right:    literalExpr{true},
+						},
+						operator: newTokenNoLiteral(COLON),
+						right:    literalExpr{nil},
+					},
+				},
+			},
+		},
+		{
+			desc: "Complex_Condition_Ternary",
+			input: []token{
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "3", 3, 0),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(LESS),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(QUESTION),
+				newToken(STRING, "yes", "yes", 0),
+				newTokenNoLiteral(COLON),
+				newToken(STRING, "no", "no", 0),
+			},
+			want: binaryExpr{
+				left: binaryExpr{
+					left: binaryExpr{
+						left: groupingExpr{
+							binaryExpr{
+								left:     literalExpr{5},
+								operator: newTokenNoLiteral(PLUS),
+								right:    literalExpr{3},
+							},
+						},
+						operator: newTokenNoLiteral(LESS),
+						right:    literalExpr{10},
+					},
+					operator: newTokenNoLiteral(QUESTION),
+					right:    literalExpr{"yes"},
+				},
+				operator: newTokenNoLiteral(COLON),
+				right:    literalExpr{"no"},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.ternary()
+			if err != nil {
+				t.Error(err)
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
 func Test_expression(t *testing.T) {
 	testCases := []struct {
 		desc  string
