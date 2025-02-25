@@ -341,3 +341,59 @@ func Test_equality(t *testing.T) {
 		})
 	}
 }
+
+func Test_expression(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+	}{
+		{
+			desc: "expr_COMMA_expr_COMMA_expr",
+			input: []token{
+				newToken(NUMBER, "12", 12, 0),
+				newTokenNoLiteral(GREATER),
+				newToken(NUMBER, "9", 9, 0),
+				newTokenNoLiteral(COMMA),
+				newToken(NUMBER, "78", 78, 0),
+				newTokenNoLiteral(GREATER_EQUAL),
+				newToken(NUMBER, "6", 6, 0),
+				newTokenNoLiteral(COMMA),
+				newToken(NUMBER, "13.5", 13.5, 0),
+				newTokenNoLiteral(BANG_EQUAL),
+				newToken(NUMBER, "51.3", 51.3, 0),
+			},
+			want: binaryExpr{
+				left: binaryExpr{
+					left: binaryExpr{
+						left:     literalExpr{12},
+						operator: newTokenNoLiteral(GREATER),
+						right:    literalExpr{9},
+					},
+					operator: newTokenNoLiteral(COMMA),
+					right: binaryExpr{
+						left:     literalExpr{78},
+						operator: newTokenNoLiteral(GREATER_EQUAL),
+						right:    literalExpr{6},
+					},
+				},
+				operator: newTokenNoLiteral(COMMA),
+				right: binaryExpr{
+					left:     literalExpr{13.5},
+					operator: newTokenNoLiteral(BANG_EQUAL),
+					right:    literalExpr{51.3},
+				},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.expression()
+			if err != nil {
+				t.Error(err)
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}

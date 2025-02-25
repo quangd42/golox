@@ -14,12 +14,32 @@ func NewParser(tokens []token) *Parser {
 }
 
 func (p *Parser) Parse() (expr, error) {
+	// TODO: add recovery
 	return p.expression()
 }
 
-// expression → equality ;
+// expression → equality ( "," equality )* ;
 func (p *Parser) expression() (expr, error) {
-	return p.equality()
+	out, err := p.equality()
+	if err != nil {
+		return nil, err
+	}
+	for p.match(COMMA) {
+		oper, err := p.advance()
+		if err != nil {
+			return nil, err
+		}
+		right, err := p.equality()
+		if err != nil {
+			return nil, err
+		}
+		out = binaryExpr{
+			left:     out,
+			operator: oper,
+			right:    right,
+		}
+	}
+	return out, nil
 }
 
 // equality → comparison ( ( "!=" | "==" ) comparison )* ;
