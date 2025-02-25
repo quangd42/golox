@@ -397,3 +397,34 @@ func Test_expression(t *testing.T) {
 		})
 	}
 }
+
+func TestParse_missing_left_operand(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+		err   error
+	}{
+		{
+			desc: "Missing_left_operand_in_binary",
+			input: []token{
+				newTokenNoLiteral(SLASH),
+				newToken(NUMBER, "13.5", 13.5, 0),
+				newTokenNoLiteral(BANG_EQUAL),
+				newToken(NUMBER, "51.3", 51.3, 0),
+			},
+			want: nil,
+			err:  NewLoxError(0, "'SLASH'", "expected left operand"),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.Parse()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}

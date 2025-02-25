@@ -179,6 +179,12 @@ func (p *Parser) primary() (expr, error) {
 			return nil, NewLoxError(tok.line, fmt.Sprintf("'%s'", tok.lexeme), "expect ')' after expression")
 		}
 		return groupingExpr{out}, nil
+	case tok.hasType(SLASH, STAR, MINUS, PLUS, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BANG, BANG_EQUAL):
+		_, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+		return nil, NewLoxError(tok.line, fmt.Sprintf("'%s'", tok.lexeme), "expected left operand")
 	default:
 		return nil, NewLoxError(tok.line, fmt.Sprintf("'%s'", tok.lexeme), "expected an expression")
 	}
