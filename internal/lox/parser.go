@@ -184,6 +184,21 @@ func (p *Parser) primary() (expr, error) {
 	}
 }
 
+func (p *Parser) synchronize() {
+	for !p.isAtEnd() {
+		tok, err := p.advance()
+		if err != nil {
+			return
+		}
+		if tok.hasType(SEMICOLON) {
+			return
+		}
+		if p.match(CLASS, FN, VAR, FOR, IF, WHILE, PRINT, RETURN) {
+			return
+		}
+	}
+}
+
 // advance **consumes** the current token and returns it
 func (p *Parser) advance() (token, error) {
 	if p.isAtEnd() {
