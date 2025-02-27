@@ -4,21 +4,21 @@ import (
 	"fmt"
 )
 
-type LoxError struct {
+type BaseError struct {
 	Line  int
 	Msg   string
 	Where string
 }
 
-func (e LoxError) Error() string {
+func (e BaseError) Error() string {
 	if e.Where == "" {
 		return fmt.Sprintf("[line %d] Error: %s", e.Line, e.Msg)
 	}
-	return fmt.Sprintf("[line %d] Error at %s: %s", e.Line, e.Where, e.Msg)
+	return fmt.Sprintf("[line %d] Error at '%s': %s", e.Line, e.Where, e.Msg)
 }
 
-func NewLoxError(line int, where, msg string) error {
-	return LoxError{
+func NewBaseError(line int, where, msg string) error {
+	return BaseError{
 		Line:  line,
 		Msg:   msg,
 		Where: where,
@@ -26,13 +26,44 @@ func NewLoxError(line int, where, msg string) error {
 }
 
 func errUnsupportedCharacter(line int, c rune) error {
-	return NewLoxError(line, string(c), "unsupported character")
+	return NewBaseError(line, string(c), "unsupported character")
 }
 
 func errUnterminatedString(line int) error {
-	return NewLoxError(line, "", "unterminated string")
+	return NewBaseError(line, "", "unterminated string")
 }
 
 func errInvalidNumber(line int, lex string) error {
-	return NewLoxError(line, lex, "invalid number")
+	return NewBaseError(line, lex, "invalid number")
+}
+
+type ParseError struct {
+	Token token
+	Msg   string
+}
+
+func (e ParseError) Error() string {
+	switch e.Token.tokenType {
+	case EOF:
+		return fmt.Sprintf("[line %d] Error at end: %s", e.Token.line, e.Msg)
+	default:
+		return fmt.Sprintf("[line %d] Error at '%s': %s", e.Token.line, e.Token.lexeme, e.Msg)
+	}
+}
+
+func NewParseError(t token, msg string) error {
+	return ParseError{Token: t, Msg: msg}
+}
+
+type RuntimeError struct {
+	Token token
+	Msg   string
+}
+
+func (e RuntimeError) Error() string {
+	return fmt.Sprintf("%s\n[line %d]", e.Msg, e.Token.line)
+}
+
+func NewRuntimeError(t token, msg string) error {
+	return RuntimeError{Token: t, Msg: msg}
 }

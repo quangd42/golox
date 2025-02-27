@@ -2,6 +2,7 @@ package lox
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 )
 
@@ -20,13 +21,20 @@ func NewScanner(source []byte) *Scanner {
 }
 
 func (s *Scanner) ScanTokens() ([]token, error) {
+	var err error
 	for !s.isAtEnd() {
-		err := s.scanToken()
+		err = s.scanToken()
 		if err != nil {
-			return nil, err
+			// Report the error but continue to scan the rest
+			fmt.Println(err.Error())
 		}
 	}
 	s.Tokens = append(s.Tokens, newToken(EOF, "", nil, s.line))
+	// If any syntax error was found, return a "syntax error" so that
+	// main function can stop after scanning.
+	if err != nil {
+		return s.Tokens, errors.New("found syntax error")
+	}
 	return s.Tokens, nil
 }
 

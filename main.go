@@ -36,7 +36,11 @@ func runFile(filename string) {
 
 	err = run(b)
 	if err != nil {
+		var rtErr *lox.RuntimeError
 		fmt.Printf("%v\n", err)
+		if errors.As(err, &rtErr) {
+			os.Exit(70)
+		}
 		os.Exit(65)
 	}
 }
@@ -55,14 +59,13 @@ func runPrompt() {
 				os.Exit(0)
 			}
 
-			continue // If err != nil delim is missing from input, so keep scanning for more
+			// If err != nil delim is missing from input, so keep scanning for more
+			continue
 		}
 
-		err = run(input[:len(input)-1]) // Remove delim \n from input before running
-		if err != nil {
-			fmt.Printf("%v\n", err)
-			os.Exit(65)
-		}
+		// Remove delim \n from input before running
+		// If there is any error just continue, error will be reported somewhere else
+		run(input[:len(input)-1])
 	}
 }
 

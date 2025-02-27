@@ -542,7 +542,7 @@ func TestParse_missing_left_operand(t *testing.T) {
 				newToken(NUMBER, "51.3", 51.3, 0),
 			},
 			want: nil,
-			err:  NewLoxError(0, "'SLASH'", "expected left operand"),
+			err:  NewParseError(newTokenNoLiteral(SLASH), "expect left operand"),
 		},
 	}
 	for _, tC := range testCases {

@@ -1,9 +1,5 @@
 package lox
 
-import (
-	"fmt"
-)
-
 type Parser struct {
 	tokens  []token
 	current int
@@ -62,11 +58,7 @@ func (p *Parser) ternary() (expr, error) {
 			return nil, err
 		}
 		if !rOper.hasType(COLON) {
-			return nil, NewLoxError(
-				lOper.line,
-				fmt.Sprintf("'%s'", lOper.lexeme),
-				"expect ':' after expression",
-			)
+			return nil, NewParseError(lOper, "expect ':' after expression")
 		}
 		falseExpr, err := p.ternary()
 		if err != nil {
@@ -219,10 +211,7 @@ func (p *Parser) primary() (expr, error) {
 			return nil, err
 		}
 		if !p.matchConsume(RIGHT_PAREN) {
-			return nil, NewLoxError(
-				tok.line,
-				fmt.Sprintf("'%s'", tok.lexeme),
-				"expect ')' after expression")
+			return nil, NewParseError(tok, "expect ')' after expression")
 		}
 		return groupingExpr{out}, nil
 	case tok.hasType(SLASH, STAR, MINUS, PLUS, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BANG, BANG_EQUAL):
@@ -230,15 +219,9 @@ func (p *Parser) primary() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return nil, NewLoxError(
-			tok.line,
-			fmt.Sprintf("'%s'", tok.lexeme),
-			"expected left operand")
+		return nil, NewParseError(tok, "expect left operand")
 	default:
-		return nil, NewLoxError(
-			tok.line,
-			fmt.Sprintf("'%s'", tok.lexeme),
-			"expected an expression")
+		return nil, NewParseError(tok, "expect an expression")
 	}
 }
 
