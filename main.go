@@ -81,11 +81,11 @@ func run(source []byte) error {
 		return err
 	}
 
-	printer := lox.NewASTPrinter()
-	exprStr, err := printer.String(expr)
+	interpreter := lox.NewInterpreter()
+	val, err := interpreter.Interpret(expr)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%v\n", exprStr)
+	fmt.Printf("%v\n", val)
 	return nil
 }
