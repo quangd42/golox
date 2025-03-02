@@ -12,6 +12,7 @@ type exprVisitor interface {
 	visitLiteralExpr(e literalExpr) (any, error)
 	visitUnaryExpr(e unaryExpr) (any, error)
 	visitVariableExpr(e variableExpr) (any, error)
+	visitAssignExpr(e assignExpr) (any, error)
 }
 
 type binaryExpr struct {
@@ -55,4 +56,13 @@ type variableExpr struct {
 
 func (e variableExpr) accept(v exprVisitor) (any, error) {
 	return v.visitVariableExpr(e)
+}
+
+type assignExpr struct {
+	name  token
+	value expr
+}
+
+func (e assignExpr) accept(v exprVisitor) (any, error) {
+	return v.visitAssignExpr(e)
 }

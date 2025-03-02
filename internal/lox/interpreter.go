@@ -179,6 +179,18 @@ func (i Interpreter) visitVariableExpr(e variableExpr) (any, error) {
 	return i.env.get(e.name)
 }
 
+func (i Interpreter) visitAssignExpr(e assignExpr) (any, error) {
+	val, err := i.evaluate(e.value)
+	if err != nil {
+		return nil, err
+	}
+	val, err = i.env.assign(e.name, val)
+	if err != nil {
+		return nil, err
+	}
+	return val, nil
+}
+
 func (i *Interpreter) execute(s stmt) error {
 	return s.accept(i)
 }

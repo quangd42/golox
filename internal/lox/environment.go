@@ -14,6 +14,14 @@ func (e *environment) define(varName string, value any) {
 	e.values[varName] = value
 }
 
+func (e *environment) assign(name token, value any) (any, error) {
+	if _, ok := e.values[name.lexeme]; !ok {
+		return nil, NewRuntimeError(name, fmt.Sprintf("Undefined variable '%s'.", name.lexeme))
+	}
+	e.values[name.lexeme] = value
+	return e.values[name.lexeme], nil
+}
+
 func (e environment) get(name token) (any, error) {
 	out, ok := e.values[name.lexeme]
 	if !ok {

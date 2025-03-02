@@ -724,6 +724,41 @@ func Test_Parse(t *testing.T) {
 			},
 		},
 		{
+			desc: "variable_with_ternary",
+			input: []token{
+				newTokenNoLiteral(VAR),
+				newToken(IDENTIFIER, "result", "result", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(GREATER),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(QUESTION),
+				newToken(STRING, "yes", "yes", 0),
+				newTokenNoLiteral(COLON),
+				newToken(STRING, "no", "no", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(EOF),
+			},
+			want: []stmt{
+				varStmt{
+					name: newToken(IDENTIFIER, "result", "result", 0),
+					initializer: binaryExpr{
+						left: binaryExpr{
+							left: binaryExpr{
+								left:     literalExpr{10},
+								operator: newTokenNoLiteral(GREATER),
+								right:    literalExpr{5},
+							},
+							operator: newTokenNoLiteral(QUESTION),
+							right:    literalExpr{"yes"},
+						},
+						operator: newTokenNoLiteral(COLON),
+						right:    literalExpr{"no"},
+					},
+				},
+			},
+		},
+		{
 			desc: "empty_input",
 			input: []token{
 				newTokenNoLiteral(EOF),

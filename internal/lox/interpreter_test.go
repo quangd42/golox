@@ -316,6 +316,82 @@ func Test_interpretVariableExpr(t *testing.T) {
 	}
 }
 
+func Test_interpretAssignExpr(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		input   assignExpr
+		initEnv map[string]any
+		want    any
+		err     error
+	}{
+		{
+			desc: "valid_assignment",
+			input: assignExpr{
+				name:  newToken(IDENTIFIER, "x", nil, 1),
+				value: literalExpr{100.0},
+			},
+			initEnv: map[string]any{"x": 42.0},
+			want:    100.0,
+			err:     nil,
+		},
+		{
+			desc: "undefined_variable",
+			input: assignExpr{
+				name:  newToken(IDENTIFIER, "y", nil, 1),
+				value: literalExpr{200.0},
+			},
+			initEnv: map[string]any{},
+			want:    nil,
+			err:     NewRuntimeError(newToken(IDENTIFIER, "y", nil, 1), "Undefined variable 'y'."),
+		},
+		{
+			desc: "assign_string",
+			input: assignExpr{
+				name:  newToken(IDENTIFIER, "z", nil, 1),
+				value: literalExpr{"hello"},
+			},
+			initEnv: map[string]any{"z": "world"},
+			want:    "hello",
+			err:     nil,
+		},
+		{
+			desc: "assign_string_to_int",
+			input: assignExpr{
+				name:  newToken(IDENTIFIER, "q", nil, 1),
+				value: literalExpr{"string"},
+			},
+			initEnv: map[string]any{"q": 42},
+			want:    "string",
+			err:     nil,
+		},
+		{
+			desc: "assign_nil",
+			input: assignExpr{
+				name:  newToken(IDENTIFIER, "w", nil, 1),
+				value: literalExpr{nil},
+			},
+			initEnv: map[string]any{"w": 42.0},
+			want:    nil,
+			err:     nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			interpreter := NewInterpreter()
+			for k, v := range tC.initEnv {
+				interpreter.env.define(k, v)
+			}
+
+			got, err := interpreter.visitAssignExpr(tC.input)
+			assert.Equal(t, tC.want, got)
+			if err != nil {
+				assert.EqualError(t, err, tC.err.Error())
+			}
+		})
+	}
+}
+
 func Test_interpretVarStmt(t *testing.T) {
 	testCases := []struct {
 		desc        string

@@ -1,6 +1,9 @@
 package lox
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 type Parser struct {
 	tokens  []token
@@ -87,9 +90,9 @@ func (p *Parser) exprStmt() (stmt, error) {
 	return exprStmt{expr: expr}, nil
 }
 
-// expression → ternary ( "," ternary )* ;
+// expression → assignment ( "," assignment )* ;
 func (p *Parser) expression() (expr, error) {
-	out, err := p.ternary()
+	out, err := p.assignment()
 	if err != nil {
 		return nil, err
 	}
@@ -98,15 +101,32 @@ func (p *Parser) expression() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		right, err := p.ternary()
+		right, err := p.assignment()
 		if err != nil {
 			return nil, err
 		}
-		out = binaryExpr{
-			left:     out,
-			operator: oper,
-			right:    right,
+		out = binaryExpr{left: out, operator: oper, right: right}
+	}
+	return out, nil
+}
+
+// assignment → IDENTIFIER "=" assignment | ternary ;
+func (p *Parser) assignment() (expr, error) {
+	out, err := p.ternary()
+	if err != nil {
+		return nil, err
+	}
+	if p.match(EQUAL) {
+		tok, _ := p.advance() // this must succeed in a if p.match()
+		val, err := p.assignment()
+		if err != nil {
+			return nil, err
 		}
+		varExpr, ok := out.(variableExpr)
+		if !ok {
+			return nil, NewRuntimeError(tok, "Invalid assignment target.")
+		}
+		out = assignExpr{name: varExpr.name, value: val}
 	}
 	return out, nil
 }
@@ -165,11 +185,7 @@ func (p *Parser) equality() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		out = binaryExpr{
-			left:     out,
-			operator: oper,
-			right:    right,
-		}
+		out = binaryExpr{left: out, operator: oper, right: right}
 	}
 	return out, nil
 }
@@ -189,11 +205,7 @@ func (p *Parser) comparison() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		out = binaryExpr{
-			left:     out,
-			operator: oper,
-			right:    right,
-		}
+		out = binaryExpr{left: out, operator: oper, right: right}
 	}
 	return out, nil
 }
@@ -213,11 +225,7 @@ func (p *Parser) term() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		out = binaryExpr{
-			left:     out,
-			operator: oper,
-			right:    right,
-		}
+		out = binaryExpr{left: out, operator: oper, right: right}
 	}
 	return out, nil
 }
@@ -237,11 +245,7 @@ func (p *Parser) factor() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		out = binaryExpr{
-			left:     out,
-			operator: oper,
-			right:    right,
-		}
+		out = binaryExpr{left: out, operator: oper, right: right}
 	}
 	return out, nil
 }
@@ -338,12 +342,7 @@ func (p *Parser) matchConsume(tokenType tokenType) (token, bool) {
 
 // match peeks at the current token to see if it is one of the expected tokens
 func (p Parser) match(expected ...tokenType) bool {
-	for _, tt := range expected {
-		if p.peek().tokenType == tt {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(expected, p.peek().tokenType)
 }
 
 // isAtEnd returns whether there is more token to parse

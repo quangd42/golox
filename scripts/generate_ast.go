@@ -16,6 +16,7 @@ var ExprTypes = []string{
 	"Literal: value any",
 	"Unary: operator token, right expr",
 	"Variable: name token",
+	"Assign: name token, value expr",
 }
 
 var StmtTypes = []string{
@@ -58,10 +59,6 @@ func defineAST(outDir, baseName, returnStr string, types []string) {
 
 func lower(s string) string {
 	return strings.ToLower(s)
-}
-
-func title(s string) string {
-	return strings.ToTitle(s)
 }
 
 func defineBaseInterface(w io.Writer, baseName, returnStr string) {
