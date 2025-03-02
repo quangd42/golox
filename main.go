@@ -14,14 +14,17 @@ func main() {
 	if len(os.Args) > 2 {
 		println("Usage: golox [script]")
 		os.Exit(64)
-	} else if len(os.Args) == 2 {
-		runFile(os.Args[1])
+	}
+
+	interpreter := lox.NewInterpreter()
+	if len(os.Args) == 2 {
+		runFile(interpreter, os.Args[1])
 	} else {
-		runPrompt()
+		runPrompt(interpreter)
 	}
 }
 
-func runFile(filename string) {
+func runFile(i *lox.Interpreter, filename string) {
 	f, err := os.Open(filename)
 	if err != nil {
 		fmt.Printf("can't open file '%s': %v\n", filename, err)
@@ -34,7 +37,7 @@ func runFile(filename string) {
 		os.Exit(2)
 	}
 
-	err = run(b)
+	err = run(i, b)
 	if err != nil {
 		var rtErr *lox.RuntimeError
 		fmt.Printf("%v\n", err)
@@ -45,7 +48,7 @@ func runFile(filename string) {
 	}
 }
 
-func runPrompt() {
+func runPrompt(i *lox.Interpreter) {
 	var stdout io.Writer = os.Stdout
 	fmt.Fprint(stdout, "Golox 0.01\nType \"help\" or something\n")
 	for {
@@ -65,27 +68,21 @@ func runPrompt() {
 
 		// Remove delim \n from input before running
 		// If there is any error just continue, error will be reported somewhere else
-		run(input[:len(input)-1])
+		run(i, input[:len(input)-1])
 	}
 }
 
-func run(source []byte) error {
+func run(i *lox.Interpreter, source []byte) error {
 	scanner := lox.NewScanner(source)
 	tokens, err := scanner.ScanTokens()
 	if err != nil {
 		return err
 	}
 	parser := lox.NewParser(tokens)
-	expr, err := parser.Parse()
+	stmts, err := parser.Parse()
 	if err != nil {
 		return err
 	}
 
-	interpreter := lox.NewInterpreter()
-	val, err := interpreter.Interpret(expr)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%v\n", val)
-	return nil
+	return i.Interpret(stmts)
 }

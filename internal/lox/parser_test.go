@@ -475,6 +475,7 @@ func Test_expression(t *testing.T) {
 		desc  string
 		input []token
 		want  expr
+		err   error
 	}{
 		{
 			desc: "expr_COMMA_expr_COMMA_expr",
@@ -513,26 +514,6 @@ func Test_expression(t *testing.T) {
 				},
 			},
 		},
-	}
-	for _, tC := range testCases {
-		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
-			got, err := parser.expression()
-			if err != nil {
-				t.Error(err)
-			}
-			assert.Equal(t, tC.want, got)
-		})
-	}
-}
-
-func TestParse_missing_left_operand(t *testing.T) {
-	testCases := []struct {
-		desc  string
-		input []token
-		want  expr
-		err   error
-	}{
 		{
 			desc: "Missing_left_operand_in_binary",
 			input: []token{
@@ -548,9 +529,239 @@ func TestParse_missing_left_operand(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			parser := NewParser(tC.input)
+			got, err := parser.expression()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_statement(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  stmt
+		err   error
+	}{
+		{
+			desc: "printStmt_Simple",
+			input: []token{
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: printStmt{expr: literalExpr{42}},
+		},
+		{
+			desc: "printStmt_with_binaryExpr",
+			input: []token{
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "8", 8, 0),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: printStmt{
+				expr: binaryExpr{
+					left:     literalExpr{42},
+					operator: newTokenNoLiteral(PLUS),
+					right:    literalExpr{8},
+				},
+			},
+		},
+		{
+			desc: "exprStmt",
+			input: []token{
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "8", 8, 0),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: exprStmt{
+				expr: binaryExpr{
+					left:     literalExpr{42},
+					operator: newTokenNoLiteral(PLUS),
+					right:    literalExpr{8},
+				},
+			},
+		},
+		{
+			desc: "missing_semicolon",
+			input: []token{
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(EOF),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(EOF), "Expect ';' after expression."),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.statement()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_declaration(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  stmt
+		err   error
+	}{
+		{
+			desc: "var_declaration_no_initializer",
+			input: []token{
+				newTokenNoLiteral(VAR),
+				newToken(IDENTIFIER, "foo", "foo", 0),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: varStmt{
+				name:        newToken(IDENTIFIER, "foo", "foo", 0),
+				initializer: nil,
+			},
+		},
+		{
+			desc: "var_declaration_with_initializer",
+			input: []token{
+				newTokenNoLiteral(VAR),
+				newToken(IDENTIFIER, "foo", "foo", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: varStmt{
+				name:        newToken(IDENTIFIER, "foo", "foo", 0),
+				initializer: literalExpr{42},
+			},
+		},
+		{
+			desc: "missing_semicolon",
+			input: []token{
+				newTokenNoLiteral(VAR),
+				newToken(IDENTIFIER, "foo", "foo", 0),
+				newTokenNoLiteral(EOF),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(EOF), "Expect ';' after variable declaration."),
+		},
+		{
+			desc: "missing_identifier",
+			input: []token{
+				newTokenNoLiteral(VAR),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(SEMICOLON), "Expect variable name."),
+		},
+		{
+			desc: "expr_statement_fallback",
+			input: []token{
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: exprStmt{expr: literalExpr{42}},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.declaration()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_Parse(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  []stmt
+		err   error
+	}{
+		{
+			desc: "single_print_statement",
+			input: []token{
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(EOF),
+			},
+			want: []stmt{printStmt{expr: literalExpr{42}}},
+		},
+		{
+			desc: "multiple_statements",
+			input: []token{
+				newTokenNoLiteral(VAR),
+				newToken(IDENTIFIER, "foo", "foo", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(PRINT),
+				newToken(IDENTIFIER, "foo", "foo", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(EOF),
+			},
+			want: []stmt{
+				varStmt{
+					name:        newToken(IDENTIFIER, "foo", "foo", 0),
+					initializer: literalExpr{42},
+				},
+				printStmt{expr: variableExpr{newToken(IDENTIFIER, "foo", "foo", 0)}},
+			},
+		},
+		{
+			desc: "empty_input",
+			input: []token{
+				newTokenNoLiteral(EOF),
+			},
+			want: []stmt{},
+		},
+		{
+			desc: "parse_error",
+			input: []token{
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(EOF),
+			},
+			want: []stmt{},
+		},
+		{
+			desc: "synchronize_recovers_at_statement_boundary",
+			input: []token{
+				newTokenNoLiteral(VAR),
+				newToken(NUMBER, "42", 42, 0), // Missing semicolon
+				newTokenNoLiteral(PRINT),      // Next statement boundary
+				newToken(STRING, "hello", "hello", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(EOF),
+			},
+			want: []stmt{
+				printStmt{expr: literalExpr{"hello"}},
+			},
+			err: nil, // Synchronize should allow parsing to continue after error
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
 			got, err := parser.Parse()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
+				return
 			}
 			assert.Equal(t, tC.want, got)
 		})

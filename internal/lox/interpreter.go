@@ -1,23 +1,40 @@
 package lox
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
-type interpreter struct{}
-
-func NewInterpreter() *interpreter {
-	return &interpreter{}
+type Interpreter struct {
+	env *environment
 }
 
-func (i interpreter) Interpret(e expr) (any, error) {
+func NewInterpreter() *Interpreter {
+	return &Interpreter{NewEnvironment()}
+}
+
+func (i Interpreter) Interpret(stmts []stmt) error {
+	for _, stmt := range stmts {
+		err := i.execute(stmt)
+		if err != nil {
+			// TODO: Log
+			fmt.Println(err)
+			return err
+		}
+	}
+	return nil
+}
+
+func (i Interpreter) evaluate(e expr) (any, error) {
 	return e.accept(i)
 }
 
-func (i interpreter) visitLiteralExpr(e literalExpr) (any, error) {
+func (i Interpreter) visitLiteralExpr(e literalExpr) (any, error) {
 	return e.value, nil
 }
 
-func (i interpreter) visitUnaryExpr(e unaryExpr) (any, error) {
-	val, err := e.right.accept(i)
+func (i Interpreter) visitUnaryExpr(e unaryExpr) (any, error) {
+	val, err := i.evaluate(e.right)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +52,7 @@ func (i interpreter) visitUnaryExpr(e unaryExpr) (any, error) {
 	}
 }
 
-func (i interpreter) isTruthy(val any) bool {
+func (i Interpreter) isTruthy(val any) bool {
 	if val == nil {
 		return false
 	}
@@ -45,64 +62,64 @@ func (i interpreter) isTruthy(val any) bool {
 	return true
 }
 
-func (i interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
-	left, err := e.left.accept(i)
+func (i Interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
+	left, err := i.evaluate(e.left)
 	if err != nil {
 		return nil, err
 	}
-	right, err := e.right.accept(i)
+	right, err := i.evaluate(e.right)
 	if err != nil {
 		return nil, err
 	}
 	switch e.operator.tokenType {
 	case SLASH:
-		leftNum, rightNum, err := i.checkNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
 		if err != nil {
 			return nil, err
 		}
 		return leftNum / rightNum, nil
 	case STAR:
-		leftNum, rightNum, err := i.checkNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
 		if err != nil {
 			return nil, err
 		}
 		return leftNum * rightNum, nil
 	case MINUS:
-		leftNum, rightNum, err := i.checkNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
 		if err != nil {
 			return nil, err
 		}
 		return leftNum - rightNum, nil
 	case PLUS:
-		leftNum, rightNum, err := i.checkNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
 		if err == nil {
 			return leftNum + rightNum, nil
 		}
-		leftStr, rightStr, err := i.checkStringOperands(e.operator, left, right)
+		leftStr, rightStr, err := i.assertStringOperands(e.operator, left, right)
 		if err == nil {
 			return leftStr + rightStr, nil
 		}
 		return nil, NewRuntimeError(e.operator, "Operands must be either numbers or strings.")
 	case GREATER:
-		leftNum, rightNum, err := i.checkNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
 		if err != nil {
 			return nil, err
 		}
 		return leftNum > rightNum, nil
 	case GREATER_EQUAL:
-		leftNum, rightNum, err := i.checkNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
 		if err != nil {
 			return nil, err
 		}
 		return leftNum >= rightNum, nil
 	case LESS:
-		leftNum, rightNum, err := i.checkNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
 		if err != nil {
 			return nil, err
 		}
 		return leftNum < rightNum, nil
 	case LESS_EQUAL:
-		leftNum, rightNum, err := i.checkNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
 		if err != nil {
 			return nil, err
 		}
@@ -116,7 +133,7 @@ func (i interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
 	}
 }
 
-func (i interpreter) assertNumber(val any) (float64, error) {
+func (i Interpreter) assertNumber(val any) (float64, error) {
 	out, ok := val.(float64)
 	if ok {
 		return out, nil
@@ -128,7 +145,7 @@ func (i interpreter) assertNumber(val any) (float64, error) {
 	return 0, errors.New("NaN")
 }
 
-func (i interpreter) checkNumberOperands(operator token, left, right any) (leftNum, rightNum float64, err error) {
+func (i Interpreter) assertNumberOperands(operator token, left, right any) (leftNum, rightNum float64, err error) {
 	err = NewRuntimeError(operator, "Operands must be numbers.")
 	leftNum, nErr := i.assertNumber(left)
 	if nErr != nil {
@@ -141,7 +158,7 @@ func (i interpreter) checkNumberOperands(operator token, left, right any) (leftN
 	return leftNum, rightNum, nil
 }
 
-func (i interpreter) checkStringOperands(operator token, left, right any) (leftStr, rightStr string, err error) {
+func (i Interpreter) assertStringOperands(operator token, left, right any) (leftStr, rightStr string, err error) {
 	err = NewRuntimeError(operator, "Operands must be strings.")
 	leftStr, ok := left.(string)
 	if !ok {
@@ -154,6 +171,44 @@ func (i interpreter) checkStringOperands(operator token, left, right any) (leftS
 	return leftStr, rightStr, nil
 }
 
-func (i interpreter) visitGroupingExpr(e groupingExpr) (any, error) {
-	return e.expr.accept(i)
+func (i Interpreter) visitGroupingExpr(e groupingExpr) (any, error) {
+	return i.evaluate(e.expr)
+}
+
+func (i Interpreter) visitVariableExpr(e variableExpr) (any, error) {
+	return i.env.get(e.name)
+}
+
+func (i *Interpreter) execute(s stmt) error {
+	return s.accept(i)
+}
+
+func (i Interpreter) visitPrintStmt(s printStmt) error {
+	val, err := i.evaluate(s.expr)
+	if err != nil {
+		return err
+	}
+	fmt.Println(val)
+	return nil
+}
+
+func (i Interpreter) visitExprStmt(s exprStmt) error {
+	_, err := i.evaluate(s.expr)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (i *Interpreter) visitVarStmt(s varStmt) error {
+	var val any
+	var err error
+	if s.initializer != nil {
+		val, err = i.evaluate(s.initializer)
+		if err != nil {
+			return err
+		}
+	}
+	i.env.define(s.name.lexeme, val)
+	return nil
 }

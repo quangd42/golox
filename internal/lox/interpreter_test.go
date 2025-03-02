@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_interpretLiteral(t *testing.T) {
+func Test_interpretLiteralExpr(t *testing.T) {
 	testCases := []struct {
 		desc  string
 		input literalExpr
@@ -48,7 +48,7 @@ func Test_interpretLiteral(t *testing.T) {
 	}
 }
 
-func Test_interpretUnary(t *testing.T) {
+func Test_interpretUnaryExpr(t *testing.T) {
 	minus := newTokenNoLiteral(MINUS)
 	bang := newTokenNoLiteral(BANG)
 	testCases := []struct {
@@ -112,7 +112,7 @@ func Test_interpretUnary(t *testing.T) {
 	}
 }
 
-func Test_interpretBinary(t *testing.T) {
+func Test_interpretBinaryExpr(t *testing.T) {
 	plus := newTokenNoLiteral(PLUS)
 	minus := newTokenNoLiteral(MINUS)
 	star := newTokenNoLiteral(STAR)
@@ -264,6 +264,109 @@ func Test_interpretBinary(t *testing.T) {
 			assert.Equal(t, tC.want, got)
 			if err != nil {
 				assert.EqualError(t, err, tC.err.Error())
+			}
+		})
+	}
+}
+
+func Test_interpretVariableExpr(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		input   variableExpr
+		initEnv map[string]any
+		want    any
+		err     error
+	}{
+		{
+			desc:    "variable_exists",
+			input:   variableExpr{name: newToken(IDENTIFIER, "x", nil, 1)},
+			initEnv: map[string]any{"x": 42.0},
+			want:    42.0,
+			err:     nil,
+		},
+		{
+			desc:    "variable_undefined",
+			input:   variableExpr{name: newToken(IDENTIFIER, "y", nil, 1)},
+			initEnv: map[string]any{},
+			want:    nil,
+			err:     NewRuntimeError(newToken(IDENTIFIER, "y", nil, 1), "Undefined variable 'y'."),
+		},
+		{
+			desc:    "variable_nil",
+			input:   variableExpr{name: newToken(IDENTIFIER, "z", nil, 1)},
+			initEnv: map[string]any{"z": nil},
+			want:    nil,
+			err:     nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			interpreter := NewInterpreter()
+			for k, v := range tC.initEnv {
+				interpreter.env.define(k, v)
+			}
+
+			got, err := interpreter.visitVariableExpr(tC.input)
+			assert.Equal(t, tC.want, got)
+			if err != nil {
+				assert.EqualError(t, err, tC.err.Error())
+			}
+		})
+	}
+}
+
+func Test_interpretVarStmt(t *testing.T) {
+	testCases := []struct {
+		desc        string
+		input       varStmt
+		wantEnvVal  any
+		wantEnvName string
+		err         error
+	}{
+		{
+			desc: "without_initializer",
+			input: varStmt{
+				name:        newToken(IDENTIFIER, "x", nil, 1),
+				initializer: nil,
+			},
+			wantEnvVal:  nil,
+			wantEnvName: "x",
+			err:         nil,
+		},
+		{
+			desc: "with_initializer",
+			input: varStmt{
+				name:        newToken(IDENTIFIER, "y", nil, 1),
+				initializer: literalExpr{42.0},
+			},
+			wantEnvVal:  42.0,
+			wantEnvName: "y",
+			err:         nil,
+		},
+		{
+			desc: "with_string_initializer",
+			input: varStmt{
+				name:        newToken(IDENTIFIER, "z", nil, 1),
+				initializer: literalExpr{"hello"},
+			},
+			wantEnvVal:  "hello",
+			wantEnvName: "z",
+			err:         nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			interpreter := NewInterpreter()
+			err := interpreter.visitVarStmt(tC.input)
+
+			if err != nil {
+				assert.EqualError(t, err, tC.err.Error())
+			} else {
+				val, ok := interpreter.env.values[tC.wantEnvName]
+				assert.True(t, ok)
+				assert.Equal(t, tC.wantEnvVal, val)
 			}
 		})
 	}

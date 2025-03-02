@@ -11,12 +11,13 @@ type exprVisitor interface {
 	visitGroupingExpr(e groupingExpr) (any, error)
 	visitLiteralExpr(e literalExpr) (any, error)
 	visitUnaryExpr(e unaryExpr) (any, error)
+	visitVariableExpr(e variableExpr) (any, error)
 }
 
 type binaryExpr struct {
-	left expr
+	left     expr
 	operator token
-	right expr
+	right    expr
 }
 
 func (e binaryExpr) accept(v exprVisitor) (any, error) {
@@ -41,10 +42,17 @@ func (e literalExpr) accept(v exprVisitor) (any, error) {
 
 type unaryExpr struct {
 	operator token
-	right expr
+	right    expr
 }
 
 func (e unaryExpr) accept(v exprVisitor) (any, error) {
 	return v.visitUnaryExpr(e)
 }
 
+type variableExpr struct {
+	name token
+}
+
+func (e variableExpr) accept(v exprVisitor) (any, error) {
+	return v.visitVariableExpr(e)
+}

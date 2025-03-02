@@ -1,17 +1,90 @@
 package lox
 
+import "fmt"
+
 type Parser struct {
 	tokens  []token
 	current int
 }
 
 func NewParser(tokens []token) *Parser {
-	return &Parser{tokens: tokens}
+	return &Parser{tokens: tokens, current: 0}
 }
 
-func (p *Parser) Parse() (expr, error) {
-	// TODO: add recovery
-	return p.expression()
+// program → declaration* EOF ;
+func (p *Parser) Parse() ([]stmt, error) {
+	out := make([]stmt, 0)
+	for !p.isAtEnd() {
+		s, err := p.declaration()
+		if err != nil {
+			fmt.Println(err.Error())
+			p.synchronize()
+			continue
+		}
+		out = append(out, s)
+	}
+	return out, nil
+}
+
+// declaration → varDecl | statement ;
+func (p *Parser) declaration() (stmt, error) {
+	if p.match(VAR) {
+		return p.varDecl()
+	}
+	return p.statement()
+}
+
+// varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
+func (p *Parser) varDecl() (stmt, error) {
+	p.advance()
+	name, ok := p.matchConsume(IDENTIFIER)
+	if !ok {
+		return nil, NewParseError(p.peek(), "Expect variable name.")
+	}
+	var initializer expr
+	var err error
+	if p.match(EQUAL) {
+		p.advance()
+		initializer, err = p.expression()
+		if err != nil {
+			return nil, NewParseError(p.peek(), "Expect expression.")
+		}
+	}
+	if _, ok := p.matchConsume(SEMICOLON); !ok {
+		return nil, NewParseError(p.peek(), "Expect ';' after variable declaration.")
+	}
+	return varStmt{name: name, initializer: initializer}, nil
+}
+
+// statement → exprStmt | printStmt ;
+func (p *Parser) statement() (stmt, error) {
+	if p.match(PRINT) {
+		p.advance()
+		return p.printStmt()
+	}
+	return p.exprStmt()
+}
+
+func (p *Parser) printStmt() (stmt, error) {
+	expr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := p.matchConsume(SEMICOLON); !ok {
+		return nil, NewParseError(p.peek(), "Expect ';' after expression.")
+	}
+	return printStmt{expr: expr}, nil
+}
+
+func (p *Parser) exprStmt() (stmt, error) {
+	expr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := p.matchConsume(SEMICOLON); !ok {
+		return nil, NewParseError(p.peek(), "Expect ';' after expression.")
+	}
+	return exprStmt{expr: expr}, nil
 }
 
 // expression → ternary ( "," ternary )* ;
@@ -189,7 +262,7 @@ func (p *Parser) unary() (expr, error) {
 	return p.primary()
 }
 
-// primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" ;
+// primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER ;
 func (p *Parser) primary() (expr, error) {
 	tok, err := p.advance()
 	if err != nil {
@@ -202,6 +275,8 @@ func (p *Parser) primary() (expr, error) {
 		return literalExpr{false}, nil
 	case tok.hasType(NIL):
 		return literalExpr{nil}, nil
+	case tok.hasType(IDENTIFIER):
+		return variableExpr{tok}, nil
 	case tok.hasType(NUMBER, STRING):
 		return literalExpr{tok.literal}, nil
 	case tok.hasType(LEFT_PAREN):
@@ -210,7 +285,7 @@ func (p *Parser) primary() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		if !p.matchConsume(RIGHT_PAREN) {
+		if _, ok := p.matchConsume(RIGHT_PAREN); !ok {
 			return nil, NewParseError(tok, "expect ')' after expression")
 		}
 		return groupingExpr{out}, nil
@@ -250,12 +325,15 @@ func (p *Parser) advance() (token, error) {
 	return out, nil
 }
 
-func (p *Parser) matchConsume(tokenType tokenType) bool {
+func (p *Parser) matchConsume(tokenType tokenType) (token, bool) {
 	if p.match(tokenType) {
-		p.advance()
-		return true
+		out, err := p.advance()
+		if err != nil {
+			return token{}, false
+		}
+		return out, true
 	}
-	return false
+	return token{}, false
 }
 
 // match peeks at the current token to see if it is one of the expected tokens
@@ -268,16 +346,16 @@ func (p Parser) match(expected ...tokenType) bool {
 	return false
 }
 
+// isAtEnd returns whether there is more token to parse
+func (p Parser) isAtEnd() bool {
+	return p.peek().tokenType == EOF
+}
+
 // peek returns the current token without consuming it. Returns the last token
 // if there is no more token to peek at
 func (p Parser) peek() token {
-	if p.isAtEnd() {
+	if p.current >= len(p.tokens) {
 		return p.tokens[len(p.tokens)-1]
 	}
 	return p.tokens[p.current]
-}
-
-// isAtEnd returns whether there is more token to parse
-func (p Parser) isAtEnd() bool {
-	return p.current >= len(p.tokens)
 }

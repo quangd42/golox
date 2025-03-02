@@ -15,6 +15,13 @@ var ExprTypes = []string{
 	"Grouping: expr expr",
 	"Literal: value any",
 	"Unary: operator token, right expr",
+	"Variable: name token",
+}
+
+var StmtTypes = []string{
+	"Expr: expr expr",
+	"Print: expr expr",
+	"Var: name token, initializer expr",
 }
 
 func main() {
@@ -24,10 +31,11 @@ func main() {
 	}
 	// filepath.Abs() ?
 	outDir := os.Args[1]
-	defineAST(outDir, "Expr", ExprTypes)
+	defineAST(outDir, "Expr", "(any, error)", ExprTypes)
+	defineAST(outDir, "Stmt", "error", StmtTypes)
 }
 
-func defineAST(outDir, baseName string, types []string) {
+func defineAST(outDir, baseName, returnStr string, types []string) {
 	path := outDir + "/" + lower(baseName) + ".go"
 	path = filepath.Clean(path)
 	f, err := os.Create(path)
@@ -41,10 +49,10 @@ func defineAST(outDir, baseName string, types []string) {
 	// file header
 	w.WriteString("package lox\n\n")
 	// main interface
-	defineBaseInterface(w, "Expr")
+	defineBaseInterface(w, lower(baseName), returnStr)
 	// visitor interface
-	defineVisitorInterface(w, baseName, types)
-	defineTypes(w, baseName, types)
+	defineVisitorInterface(w, baseName, returnStr, types)
+	defineTypes(w, baseName, returnStr, types)
 	fmt.Printf("output to %s\n", path)
 }
 
@@ -56,28 +64,28 @@ func title(s string) string {
 	return strings.ToTitle(s)
 }
 
-func defineBaseInterface(w io.Writer, baseName string) {
+func defineBaseInterface(w io.Writer, baseName, returnStr string) {
 	baseName = lower(baseName)
 	fmt.Fprintf(w, "type %s interface {\n", baseName)
-	fmt.Fprintf(w, "	accept(visitor %sVisitor) (any, error)\n", baseName)
+	fmt.Fprintf(w, "	accept(visitor %sVisitor) %s\n", baseName, returnStr)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w, "")
 }
 
-func defineVisitorInterface(w io.Writer, baseName string, types []string) {
+func defineVisitorInterface(w io.Writer, baseName, returnStr string, types []string) {
 	fmt.Fprintf(w, "type %sVisitor interface {\n", lower(baseName))
 	for _, t := range types {
 		name, _, found := strings.Cut(t, ":")
 		if !found {
 			log.Fatalf("invalid ast format %s\n", t)
 		}
-		fmt.Fprintf(w, "	visit%s%s(e %s%s) (any, error)\n", name, baseName, lower(name), baseName)
+		fmt.Fprintf(w, "	visit%s%s(e %s%s) %s\n", name, baseName, lower(name), baseName, returnStr)
 	}
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w, "")
 }
 
-func defineTypes(w io.Writer, baseName string, types []string) {
+func defineTypes(w io.Writer, baseName, returnStr string, types []string) {
 	for _, t := range types {
 		typeName, fieldsStr, found := strings.Cut(t, ":")
 		if !found {
@@ -91,7 +99,7 @@ func defineTypes(w io.Writer, baseName string, types []string) {
 		fmt.Fprintln(w, "}")
 		fmt.Fprintln(w, "")
 
-		fmt.Fprintf(w, "func (e %s%s) accept(v %sVisitor) (any, error) {\n", lower(typeName), baseName, lower(baseName))
+		fmt.Fprintf(w, "func (e %s%s) accept(v %sVisitor) %s {\n", lower(typeName), baseName, lower(baseName), returnStr)
 		fmt.Fprintf(w, "	return v.visit%s%s(e)\n", typeName, baseName)
 		fmt.Fprintln(w, "}")
 		fmt.Fprintln(w, "")

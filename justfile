@@ -21,3 +21,7 @@ watch:
     --build.include_ext "go" \
     --build.stop_on_error "false" \
     --misc.clean_on_exit true
+
+gen-ast:
+    go run scripts/generate_ast.go internal/lox/
+    gofmt -w .
