@@ -597,6 +597,92 @@ func Test_statement(t *testing.T) {
 			want: nil,
 			err:  NewParseError(newTokenNoLiteral(EOF), "Expect ';' after expression."),
 		},
+		{
+			desc: "simple_block",
+			input: []token{
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: blockStmt{
+				statements: []stmt{
+					printStmt{expr: literalExpr{42}},
+				},
+			},
+		},
+		{
+			desc: "empty_block",
+			input: []token{
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: blockStmt{statements: []stmt{}},
+		},
+		{
+			desc: "nested_blocks",
+			input: []token{
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "1", 1, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "2", 2, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: blockStmt{
+				statements: []stmt{
+					printStmt{expr: literalExpr{1}},
+					blockStmt{
+						statements: []stmt{
+							printStmt{expr: literalExpr{2}},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "block_with_declarations",
+			input: []token{
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(VAR),
+				newToken(IDENTIFIER, "x", "x", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(PRINT),
+				newToken(IDENTIFIER, "x", "x", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: blockStmt{
+				statements: []stmt{
+					varStmt{
+						name:        newToken(IDENTIFIER, "x", "x", 0),
+						initializer: literalExpr{10},
+					},
+					printStmt{
+						expr: variableExpr{newToken(IDENTIFIER, "x", "x", 0)},
+					},
+				},
+			},
+		},
+		{
+			desc: "missing_right_brace",
+			input: []token{
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(EOF),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(EOF), "Expect '}' after block."),
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

@@ -14,27 +14,37 @@ func NewParser(tokens []token) *Parser {
 	return &Parser{tokens: tokens, current: 0}
 }
 
+/*
+	Statements
+*/
+
 // program → declaration* EOF ;
 func (p *Parser) Parse() ([]stmt, error) {
 	out := make([]stmt, 0)
 	for !p.isAtEnd() {
-		s, err := p.declaration()
+		stmt, err := p.declaration()
 		if err != nil {
-			fmt.Println(err.Error())
-			p.synchronize()
 			continue
 		}
-		out = append(out, s)
+		out = append(out, stmt)
 	}
 	return out, nil
 }
 
 // declaration → varDecl | statement ;
-func (p *Parser) declaration() (stmt, error) {
+func (p *Parser) declaration() (out stmt, err error) {
 	if p.match(VAR) {
-		return p.varDecl()
+		out, err = p.varDecl()
+	} else {
+		out, err = p.statement()
 	}
-	return p.statement()
+	// print error and synchronize at statement level
+	if err != nil {
+		fmt.Println(err.Error())
+		p.synchronize()
+		return nil, err
+	}
+	return out, nil
 }
 
 // varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
@@ -59,15 +69,37 @@ func (p *Parser) varDecl() (stmt, error) {
 	return varStmt{name: name, initializer: initializer}, nil
 }
 
-// statement → exprStmt | printStmt ;
+// statement → exprStmt | printStmt | block ;
 func (p *Parser) statement() (stmt, error) {
-	if p.match(PRINT) {
+	switch {
+	case p.match(PRINT):
 		p.advance()
 		return p.printStmt()
+	case p.match(LEFT_BRACE):
+		p.advance()
+		stmts, err := p.block()
+		if err != nil {
+			return nil, err
+		}
+		return blockStmt{stmts}, nil
+	default:
+		return p.exprStmt()
 	}
-	return p.exprStmt()
 }
 
+// exprStmt → expression ";" ;
+func (p *Parser) exprStmt() (stmt, error) {
+	expr, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := p.matchConsume(SEMICOLON); !ok {
+		return nil, NewParseError(p.peek(), "Expect ';' after expression.")
+	}
+	return exprStmt{expr: expr}, nil
+}
+
+// printStmt → "print" expression ";" ;
 func (p *Parser) printStmt() (stmt, error) {
 	expr, err := p.expression()
 	if err != nil {
@@ -79,16 +111,25 @@ func (p *Parser) printStmt() (stmt, error) {
 	return printStmt{expr: expr}, nil
 }
 
-func (p *Parser) exprStmt() (stmt, error) {
-	expr, err := p.expression()
-	if err != nil {
-		return nil, err
+// block → "{" declaration* "}" ;
+func (p *Parser) block() ([]stmt, error) {
+	out := make([]stmt, 0)
+	for !p.match(RIGHT_BRACE) && !p.isAtEnd() {
+		stmt, err := p.declaration()
+		if err != nil {
+			continue
+		}
+		out = append(out, stmt)
 	}
-	if _, ok := p.matchConsume(SEMICOLON); !ok {
-		return nil, NewParseError(p.peek(), "Expect ';' after expression.")
+	if _, ok := p.matchConsume(RIGHT_BRACE); !ok {
+		return nil, NewParseError(p.peek(), "Expect '}' after block.")
 	}
-	return exprStmt{expr: expr}, nil
+	return out, nil
 }
+
+/*
+	Expressions
+*/
 
 // expression → assignment ( "," assignment )* ;
 func (p *Parser) expression() (expr, error) {

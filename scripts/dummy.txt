@@ -1,8 +1,0 @@
-() {} <> >=
-// This is some text
-// And some more
-<= != ! ==
-"This is some string"
-23. "some more string" 156
-this and that or never false true
-return out

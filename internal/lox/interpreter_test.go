@@ -447,3 +447,101 @@ func Test_interpretVarStmt(t *testing.T) {
 		})
 	}
 }
+
+func Test_interpretBlockStmt(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		stmts   []stmt
+		initEnv map[string]any
+		wantEnv map[string]any
+		err     error
+	}{
+		{
+			desc: "access_and_modify_global_var",
+			stmts: []stmt{
+				varStmt{
+					name:        newToken(IDENTIFIER, "local", nil, 1),
+					initializer: literalExpr{42.0},
+				},
+				exprStmt{
+					expr: assignExpr{
+						name:  newToken(IDENTIFIER, "global", nil, 1),
+						value: literalExpr{100.0},
+					},
+				},
+			},
+			initEnv: map[string]any{"global": 50.0},
+			wantEnv: map[string]any{"global": 100.0},
+			err:     nil,
+		},
+		{
+			desc: "nested_blocks_access_global",
+			stmts: []stmt{
+				blockStmt{
+					statements: []stmt{
+						varStmt{
+							name:        newToken(IDENTIFIER, "a", nil, 1),
+							initializer: literalExpr{1.0},
+						},
+						blockStmt{
+							statements: []stmt{
+								exprStmt{
+									expr: assignExpr{
+										name:  newToken(IDENTIFIER, "global", nil, 1),
+										value: literalExpr{200.0},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			initEnv: map[string]any{"global": 100.0},
+			wantEnv: map[string]any{"global": 200.0},
+			err:     nil,
+		},
+		{
+			desc: "local_var_not_accessible_after_block",
+			stmts: []stmt{
+				varStmt{
+					name:        newToken(IDENTIFIER, "local", nil, 1),
+					initializer: literalExpr{42.0},
+				},
+			},
+			initEnv: map[string]any{},
+			wantEnv: map[string]any{},
+			err:     nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			interpreter := NewInterpreter()
+			for k, v := range tC.initEnv {
+				interpreter.env.define(k, v)
+			}
+
+			block := blockStmt{statements: tC.stmts}
+			err := interpreter.visitBlockStmt(block)
+
+			if err != nil {
+				assert.EqualError(t, err, tC.err.Error())
+			}
+
+			// Check global environment matches expected
+			for k, v := range tC.wantEnv {
+				val, exists := interpreter.env.values[k]
+				assert.True(t, exists)
+				assert.Equal(t, v, val)
+			}
+
+			// Check local variables are not accessible
+			for _, stmt := range tC.stmts {
+				if varStmt, ok := stmt.(varStmt); ok {
+					_, exists := interpreter.env.values[varStmt.name.lexeme]
+					assert.False(t, exists)
+				}
+			}
+		})
+	}
+}

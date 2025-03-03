@@ -23,6 +23,7 @@ var StmtTypes = []string{
 	"Expr: expr expr",
 	"Print: expr expr",
 	"Var: name token, initializer expr",
+	"Block: statements []stmt",
 }
 
 func main() {

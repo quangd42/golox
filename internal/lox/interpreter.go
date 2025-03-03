@@ -10,7 +10,7 @@ type Interpreter struct {
 }
 
 func NewInterpreter() *Interpreter {
-	return &Interpreter{NewEnvironment()}
+	return &Interpreter{NewGlobalEnvironment()}
 }
 
 func (i Interpreter) Interpret(stmts []stmt) error {
@@ -184,7 +184,7 @@ func (i Interpreter) visitAssignExpr(e assignExpr) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	val, err = i.env.assign(e.name, val)
+	err = i.env.assign(e.name, val)
 	if err != nil {
 		return nil, err
 	}
@@ -193,6 +193,21 @@ func (i Interpreter) visitAssignExpr(e assignExpr) (any, error) {
 
 func (i *Interpreter) execute(s stmt) error {
 	return s.accept(i)
+}
+
+func (i *Interpreter) executeBlock(s blockStmt, blockEnv *environment) error {
+	prevEnv := i.env
+	i.env = blockEnv
+	defer func() {
+		i.env = prevEnv
+	}()
+	for _, stmt := range s.statements {
+		err := i.execute(stmt)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (i Interpreter) visitPrintStmt(s printStmt) error {
@@ -223,4 +238,8 @@ func (i *Interpreter) visitVarStmt(s varStmt) error {
 	}
 	i.env.define(s.name.lexeme, val)
 	return nil
+}
+
+func (i *Interpreter) visitBlockStmt(s blockStmt) error {
+	return i.executeBlock(s, NewEnvironment(i.env))
 }
