@@ -523,7 +523,6 @@ func Test_interpretBlockStmt(t *testing.T) {
 
 			block := blockStmt{statements: tC.stmts}
 			err := interpreter.visitBlockStmt(block)
-
 			if err != nil {
 				assert.EqualError(t, err, tC.err.Error())
 			}
@@ -541,6 +540,125 @@ func Test_interpretBlockStmt(t *testing.T) {
 					_, exists := interpreter.env.values[varStmt.name.lexeme]
 					assert.False(t, exists)
 				}
+			}
+		})
+	}
+}
+
+func Test_interpretIfStmt(t *testing.T) {
+	testCases := []struct {
+		desc      string
+		condition expr
+		thenStmt  stmt
+		elseStmt  stmt
+		initEnv   map[string]any
+		wantEnv   map[string]any
+		err       error
+	}{
+		{
+			desc:      "true_condition_no_else",
+			condition: literalExpr{true},
+			thenStmt: exprStmt{
+				expr: assignExpr{
+					name:  newToken(IDENTIFIER, "x", nil, 1),
+					value: literalExpr{1.0},
+				},
+			},
+			elseStmt: nil,
+			initEnv:  map[string]any{"x": 0.0},
+			wantEnv:  map[string]any{"x": 1.0},
+			err:      nil,
+		},
+		{
+			desc:      "false_condition_no_else",
+			condition: literalExpr{false},
+			thenStmt: exprStmt{
+				expr: assignExpr{
+					name:  newToken(IDENTIFIER, "x", nil, 1),
+					value: literalExpr{1.0},
+				},
+			},
+			elseStmt: nil,
+			initEnv:  map[string]any{"x": 0.0},
+			wantEnv:  map[string]any{"x": 0.0},
+			err:      nil,
+		},
+		{
+			desc:      "true_condition_with_else",
+			condition: literalExpr{true},
+			thenStmt: exprStmt{
+				expr: assignExpr{
+					name:  newToken(IDENTIFIER, "x", nil, 1),
+					value: literalExpr{1.0},
+				},
+			},
+			elseStmt: exprStmt{
+				expr: assignExpr{
+					name:  newToken(IDENTIFIER, "x", nil, 1),
+					value: literalExpr{2.0},
+				},
+			},
+			initEnv: map[string]any{"x": 0.0},
+			wantEnv: map[string]any{"x": 1.0},
+			err:     nil,
+		},
+		{
+			desc:      "false_condition_with_else",
+			condition: literalExpr{false},
+			thenStmt: exprStmt{
+				expr: assignExpr{
+					name:  newToken(IDENTIFIER, "x", nil, 1),
+					value: literalExpr{1.0},
+				},
+			},
+			elseStmt: exprStmt{
+				expr: assignExpr{
+					name:  newToken(IDENTIFIER, "x", nil, 1),
+					value: literalExpr{2},
+				},
+			},
+			initEnv: map[string]any{"x": 0.0},
+			wantEnv: map[string]any{"x": 2},
+			err:     nil,
+		},
+		{
+			desc:      "non_boolean_condition",
+			condition: literalExpr{"not a boolean"},
+			thenStmt: exprStmt{
+				expr: assignExpr{
+					name:  newToken(IDENTIFIER, "x", nil, 1),
+					value: literalExpr{"hit then"},
+				},
+			},
+			elseStmt: nil,
+			initEnv:  map[string]any{"x": 0.0},
+			wantEnv:  map[string]any{"x": "hit then"},
+			err:      nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			interpreter := NewInterpreter()
+			for k, v := range tC.initEnv {
+				interpreter.env.define(k, v)
+			}
+
+			stmt := ifStmt{
+				condition:  tC.condition,
+				thenBranch: tC.thenStmt,
+				elseBranch: tC.elseStmt,
+			}
+
+			err := interpreter.visitIfStmt(stmt)
+			if err != nil {
+				assert.EqualError(t, err, tC.err.Error())
+			}
+
+			for k, v := range tC.wantEnv {
+				val, exists := interpreter.env.values[k]
+				assert.True(t, exists)
+				assert.Equal(t, v, val)
 			}
 		})
 	}

@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TODO: add back {}
 var text = `() <> >=
 // This is some comment
 // And some more
@@ -91,7 +90,7 @@ func TestScanTokens(t *testing.T) {
 			desc:  "sample text",
 			input: []byte(text),
 			want: []token{
-				newToken(LEFT_PAREN, "(", nil, 0), newToken(RIGHT_PAREN, ")", nil, 0), // newToken(LEFT_BRACE, "{", nil, 0), newToken(RIGHT_BRACE, "}", nil, 0),
+				newToken(LEFT_PAREN, "(", nil, 0), newToken(RIGHT_PAREN, ")", nil, 0),
 				newToken(LESS, "<", nil, 0), newToken(GREATER, ">", nil, 0), newToken(GREATER_EQUAL, ">=", nil, 0), newToken(LESS_EQUAL, "<=", nil, 3),
 				newToken(BANG_EQUAL, "!=", nil, 3), newToken(BANG, "!", nil, 3), newToken(EQUAL_EQUAL, "==", nil, 3),
 				newToken(STRING, "\"This is some string\"", "This is some string", 4),

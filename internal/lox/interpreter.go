@@ -210,12 +210,16 @@ func (i *Interpreter) executeBlock(s blockStmt, blockEnv *environment) error {
 	return nil
 }
 
-func (i Interpreter) visitPrintStmt(s printStmt) error {
-	val, err := i.evaluate(s.expr)
-	if err != nil {
-		return err
+func (i *Interpreter) visitVarStmt(s varStmt) error {
+	var val any
+	var err error
+	if s.initializer != nil {
+		val, err = i.evaluate(s.initializer)
+		if err != nil {
+			return err
+		}
 	}
-	fmt.Println(val)
+	i.env.define(s.name.lexeme, val)
 	return nil
 }
 
@@ -227,16 +231,25 @@ func (i Interpreter) visitExprStmt(s exprStmt) error {
 	return nil
 }
 
-func (i *Interpreter) visitVarStmt(s varStmt) error {
-	var val any
-	var err error
-	if s.initializer != nil {
-		val, err = i.evaluate(s.initializer)
-		if err != nil {
-			return err
-		}
+func (i Interpreter) visitIfStmt(s ifStmt) error {
+	condition, err := i.evaluate(s.condition)
+	if err != nil {
+		return err
 	}
-	i.env.define(s.name.lexeme, val)
+	if i.isTruthy(condition) {
+		return i.execute(s.thenBranch)
+	} else if s.elseBranch != nil {
+		return i.execute(s.elseBranch)
+	}
+	return nil
+}
+
+func (i Interpreter) visitPrintStmt(s printStmt) error {
+	val, err := i.evaluate(s.expr)
+	if err != nil {
+		return err
+	}
+	fmt.Println(val)
 	return nil
 }
 

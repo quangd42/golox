@@ -523,7 +523,7 @@ func Test_expression(t *testing.T) {
 				newToken(NUMBER, "51.3", 51.3, 0),
 			},
 			want: nil,
-			err:  NewParseError(newTokenNoLiteral(SLASH), "expect left operand"),
+			err:  NewParseError(newTokenNoLiteral(SLASH), "Expect left operand."),
 		},
 	}
 	for _, tC := range testCases {
@@ -682,6 +682,125 @@ func Test_statement(t *testing.T) {
 			},
 			want: nil,
 			err:  NewParseError(newTokenNoLiteral(EOF), "Expect '}' after block."),
+		},
+		{
+			desc: "simple_if_then",
+			input: []token{
+				newTokenNoLiteral(IF),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(GREATER),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: ifStmt{
+				condition: binaryExpr{
+					left:     literalExpr{10},
+					operator: newTokenNoLiteral(GREATER),
+					right:    literalExpr{5},
+				},
+				thenBranch: blockStmt{
+					statements: []stmt{
+						printStmt{expr: literalExpr{true}},
+					},
+				},
+				elseBranch: nil,
+			},
+		},
+		{
+			desc: "simple_if_then_else",
+			input: []token{
+				newTokenNoLiteral(IF),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(GREATER),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+				newTokenNoLiteral(ELSE),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(FALSE),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: ifStmt{
+				condition: binaryExpr{
+					left:     literalExpr{10},
+					operator: newTokenNoLiteral(GREATER),
+					right:    literalExpr{5},
+				},
+				thenBranch: blockStmt{
+					statements: []stmt{
+						printStmt{expr: literalExpr{true}},
+					},
+				},
+				elseBranch: blockStmt{
+					statements: []stmt{
+						printStmt{expr: literalExpr{false}},
+					},
+				},
+			},
+		},
+		{
+			desc: "if_with_parentheses",
+			input: []token{
+				newTokenNoLiteral(IF),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(GREATER),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: ifStmt{
+				condition: groupingExpr{binaryExpr{
+					left:     literalExpr{10},
+					operator: newTokenNoLiteral(GREATER),
+					right:    literalExpr{5},
+				}},
+				thenBranch: blockStmt{statements: []stmt{printStmt{expr: literalExpr{true}}}},
+				elseBranch: nil,
+			},
+		},
+		{
+			desc: "if_missing_block",
+			input: []token{
+				newTokenNoLiteral(IF),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(PRINT), "Expect '{' after condition."),
+		},
+		{
+			desc: "else_missing_block",
+			input: []token{
+				newTokenNoLiteral(IF),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+				newTokenNoLiteral(ELSE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(PRINT), "Expect '{' after 'else'."),
 		},
 	}
 	for _, tC := range testCases {

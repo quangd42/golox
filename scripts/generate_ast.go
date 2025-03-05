@@ -21,6 +21,7 @@ var ExprTypes = []string{
 
 var StmtTypes = []string{
 	"Expr: expr expr",
+	"If: condition expr, thenBranch stmt, elseBranch stmt",
 	"Print: expr expr",
 	"Var: name token, initializer expr",
 	"Block: statements []stmt",

@@ -69,12 +69,15 @@ func (p *Parser) varDecl() (stmt, error) {
 	return varStmt{name: name, initializer: initializer}, nil
 }
 
-// statement → exprStmt | printStmt | block ;
+// statement → exprStmt | ifStmt | printStmt | block ;
 func (p *Parser) statement() (stmt, error) {
 	switch {
 	case p.match(PRINT):
 		p.advance()
-		return p.printStmt()
+		return p.printStatement()
+	case p.match(IF):
+		p.advance()
+		return p.ifStatement()
 	case p.match(LEFT_BRACE):
 		p.advance()
 		stmts, err := p.block()
@@ -83,12 +86,12 @@ func (p *Parser) statement() (stmt, error) {
 		}
 		return blockStmt{stmts}, nil
 	default:
-		return p.exprStmt()
+		return p.exprStatement()
 	}
 }
 
 // exprStmt → expression ";" ;
-func (p *Parser) exprStmt() (stmt, error) {
+func (p *Parser) exprStatement() (stmt, error) {
 	expr, err := p.expression()
 	if err != nil {
 		return nil, err
@@ -99,8 +102,39 @@ func (p *Parser) exprStmt() (stmt, error) {
 	return exprStmt{expr: expr}, nil
 }
 
+// ifStmt → "if" expression block ( "else" block )? ;
+func (p *Parser) ifStatement() (stmt, error) {
+	condition, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := p.matchConsume(LEFT_BRACE); !ok {
+		return nil, NewParseError(p.peek(), "Expect '{' after condition.")
+	}
+	thenStmts, err := p.block()
+	if err != nil {
+		return nil, err
+	}
+	var elseBlock stmt
+	if _, ok := p.matchConsume(ELSE); ok {
+		if _, ok := p.matchConsume(LEFT_BRACE); !ok {
+			return nil, NewParseError(p.peek(), "Expect '{' after 'else'.")
+		}
+		elseStmts, err := p.block()
+		if err != nil {
+			return nil, err
+		}
+		elseBlock = blockStmt{elseStmts}
+	}
+	return ifStmt{
+		condition:  condition,
+		thenBranch: blockStmt{thenStmts},
+		elseBranch: elseBlock,
+	}, nil
+}
+
 // printStmt → "print" expression ";" ;
-func (p *Parser) printStmt() (stmt, error) {
+func (p *Parser) printStatement() (stmt, error) {
 	expr, err := p.expression()
 	if err != nil {
 		return nil, err
@@ -192,7 +226,7 @@ func (p *Parser) ternary() (expr, error) {
 			return nil, err
 		}
 		if !rOper.hasType(COLON) {
-			return nil, NewParseError(lOper, "expect ':' after expression")
+			return nil, NewParseError(lOper, "Expect ':' after expression.")
 		}
 		falseExpr, err := p.ternary()
 		if err != nil {
@@ -325,13 +359,12 @@ func (p *Parser) primary() (expr, error) {
 	case tok.hasType(NUMBER, STRING):
 		return literalExpr{tok.literal}, nil
 	case tok.hasType(LEFT_PAREN):
-		// TODO: parse empty group ()
 		out, err := p.expression()
 		if err != nil {
 			return nil, err
 		}
 		if _, ok := p.matchConsume(RIGHT_PAREN); !ok {
-			return nil, NewParseError(tok, "expect ')' after expression")
+			return nil, NewParseError(tok, "Expect ')' after expression.")
 		}
 		return groupingExpr{out}, nil
 	case tok.hasType(SLASH, STAR, MINUS, PLUS, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BANG, BANG_EQUAL):
@@ -339,9 +372,9 @@ func (p *Parser) primary() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return nil, NewParseError(tok, "expect left operand")
+		return nil, NewParseError(tok, "Expect left operand.")
 	default:
-		return nil, NewParseError(tok, "expect an expression")
+		return nil, NewParseError(tok, "Expect an expression.")
 	}
 }
 
@@ -370,8 +403,10 @@ func (p *Parser) advance() (token, error) {
 	return out, nil
 }
 
-func (p *Parser) matchConsume(tokenType tokenType) (token, bool) {
-	if p.match(tokenType) {
+// matchConsume **consumes** the current token if it matches expected token.
+// Returns the consumed token if matched.
+func (p *Parser) matchConsume(expected tokenType) (token, bool) {
+	if p.match(expected) {
 		out, err := p.advance()
 		if err != nil {
 			return token{}, false
