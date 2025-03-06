@@ -392,6 +392,109 @@ func Test_interpretAssignExpr(t *testing.T) {
 	}
 }
 
+func Test_interpretLogicalExpr(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		input   logicalExpr
+		want    any
+		wantErr error
+	}{
+		{
+			desc: "OR_leftTrue",
+			input: logicalExpr{
+				left:     literalExpr{true},
+				operator: newTokenNoLiteral(OR),
+				right:    literalExpr{false},
+			},
+			want:    true,
+			wantErr: nil,
+		},
+		{
+			desc: "OR_leftFalse",
+			input: logicalExpr{
+				left:     literalExpr{false},
+				operator: newTokenNoLiteral(OR),
+				right:    literalExpr{true},
+			},
+			want:    true,
+			wantErr: nil,
+		},
+		{
+			desc: "OR_bothFalse",
+			input: logicalExpr{
+				left:     literalExpr{false},
+				operator: newTokenNoLiteral(OR),
+				right:    literalExpr{false},
+			},
+			want:    false,
+			wantErr: nil,
+		},
+		{
+			desc: "AND_bothTrue",
+			input: logicalExpr{
+				left:     literalExpr{true},
+				operator: newTokenNoLiteral(AND),
+				right:    literalExpr{true},
+			},
+			want:    true,
+			wantErr: nil,
+		},
+		{
+			desc: "AND_leftFalse",
+			input: logicalExpr{
+				left:     literalExpr{false},
+				operator: newTokenNoLiteral(AND),
+				right:    literalExpr{true},
+			},
+			want:    false,
+			wantErr: nil,
+		},
+		{
+			desc: "AND_rightFalse",
+			input: logicalExpr{
+				left:     literalExpr{true},
+				operator: newTokenNoLiteral(AND),
+				right:    literalExpr{false},
+			},
+			want:    false,
+			wantErr: nil,
+		},
+		{
+			desc: "OR_nonBoolean",
+			input: logicalExpr{
+				left:     literalExpr{"string"},
+				operator: newTokenNoLiteral(OR),
+				right:    literalExpr{true},
+			},
+			want:    "string",
+			wantErr: nil,
+		},
+		{
+			desc: "AND_nonBoolean",
+			input: logicalExpr{
+				left:     literalExpr{nil},
+				operator: newTokenNoLiteral(AND),
+				right:    literalExpr{true},
+			},
+			want:    nil,
+			wantErr: nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			interpreter := NewInterpreter()
+			got, err := interpreter.visitLogicalExpr(tC.input)
+			assert.Equal(t, tC.want, got)
+			if tC.wantErr != nil {
+				assert.EqualError(t, err, tC.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func Test_interpretVarStmt(t *testing.T) {
 	testCases := []struct {
 		desc        string

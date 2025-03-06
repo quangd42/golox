@@ -470,6 +470,220 @@ func Test_ternary(t *testing.T) {
 	}
 }
 
+func Test_or(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+	}{
+		{
+			desc:  "simple_or",
+			input: []token{newTokenNoLiteral(TRUE), newTokenNoLiteral(OR), newTokenNoLiteral(FALSE)},
+			want:  logicalExpr{left: literalExpr{true}, operator: newTokenNoLiteral(OR), right: literalExpr{false}},
+		},
+		{
+			desc: "chained_or",
+			input: []token{
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(OR),
+				newTokenNoLiteral(FALSE),
+				newTokenNoLiteral(OR),
+				newTokenNoLiteral(NIL),
+			},
+			want: logicalExpr{
+				left: logicalExpr{
+					left:     literalExpr{true},
+					operator: newTokenNoLiteral(OR),
+					right:    literalExpr{false},
+				},
+				operator: newTokenNoLiteral(OR),
+				right:    literalExpr{nil},
+			},
+		},
+		{
+			desc: "or_with_expressions",
+			input: []token{
+				newToken(NUMBER, "1", 1, 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "2", 2, 0),
+				newTokenNoLiteral(OR),
+				newToken(NUMBER, "3", 3, 0),
+				newTokenNoLiteral(STAR),
+				newToken(NUMBER, "4", 4, 0),
+			},
+			want: logicalExpr{
+				left: binaryExpr{
+					left:     literalExpr{1},
+					operator: newTokenNoLiteral(PLUS),
+					right:    literalExpr{2},
+				},
+				operator: newTokenNoLiteral(OR),
+				right: binaryExpr{
+					left:     literalExpr{3},
+					operator: newTokenNoLiteral(STAR),
+					right:    literalExpr{4},
+				},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.or()
+			if err != nil {
+				t.Error(err)
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_and(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+	}{
+		{
+			desc:  "simple_and",
+			input: []token{newTokenNoLiteral(TRUE), newTokenNoLiteral(AND), newTokenNoLiteral(FALSE)},
+			want:  logicalExpr{left: literalExpr{true}, operator: newTokenNoLiteral(AND), right: literalExpr{false}},
+		},
+		{
+			desc: "chained_and",
+			input: []token{
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(AND),
+				newTokenNoLiteral(FALSE),
+				newTokenNoLiteral(AND),
+				newTokenNoLiteral(NIL),
+			},
+			want: logicalExpr{
+				left: logicalExpr{
+					left:     literalExpr{true},
+					operator: newTokenNoLiteral(AND),
+					right:    literalExpr{false},
+				},
+				operator: newTokenNoLiteral(AND),
+				right:    literalExpr{nil},
+			},
+		},
+		{
+			desc: "and_with_expressions",
+			input: []token{
+				newToken(NUMBER, "1", 1, 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "2", 2, 0),
+				newTokenNoLiteral(AND),
+				newToken(NUMBER, "3", 3, 0),
+				newTokenNoLiteral(STAR),
+				newToken(NUMBER, "4", 4, 0),
+			},
+			want: logicalExpr{
+				left: binaryExpr{
+					left:     literalExpr{1},
+					operator: newTokenNoLiteral(PLUS),
+					right:    literalExpr{2},
+				},
+				operator: newTokenNoLiteral(AND),
+				right: binaryExpr{
+					left:     literalExpr{3},
+					operator: newTokenNoLiteral(STAR),
+					right:    literalExpr{4},
+				},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.and()
+			if err != nil {
+				t.Error(err)
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_assignment(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+		err   error
+	}{
+		{
+			desc: "simple_assignment",
+			input: []token{
+				newToken(IDENTIFIER, "x", "x", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "42", 42, 0),
+			},
+			want: assignExpr{
+				name:  newToken(IDENTIFIER, "x", "x", 0),
+				value: literalExpr{42},
+			},
+		},
+		{
+			desc: "chained_assignment",
+			input: []token{
+				newToken(IDENTIFIER, "x", "x", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(IDENTIFIER, "y", "y", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "42", 42, 0),
+			},
+			want: assignExpr{
+				name: newToken(IDENTIFIER, "x", "x", 0),
+				value: assignExpr{
+					name:  newToken(IDENTIFIER, "y", "y", 0),
+					value: literalExpr{42},
+				},
+			},
+		},
+		{
+			desc: "assignment_with_expression",
+			input: []token{
+				newToken(IDENTIFIER, "x", "x", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "5", 5, 0),
+			},
+			want: assignExpr{
+				name: newToken(IDENTIFIER, "x", "x", 0),
+				value: binaryExpr{
+					left:     literalExpr{10},
+					operator: newTokenNoLiteral(PLUS),
+					right:    literalExpr{5},
+				},
+			},
+		},
+		{
+			desc: "invalid_assignment_target",
+			input: []token{
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "10", 10, 0),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(EQUAL), "Invalid assignment target."),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.assignment()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
 func Test_expression(t *testing.T) {
 	testCases := []struct {
 		desc  string
@@ -524,6 +738,89 @@ func Test_expression(t *testing.T) {
 			},
 			want: nil,
 			err:  NewParseError(newTokenNoLiteral(SLASH), "Expect left operand."),
+		},
+		{
+			desc: "or_simple",
+			input: []token{
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(OR),
+				newTokenNoLiteral(FALSE),
+			},
+			want: logicalExpr{
+				left:     literalExpr{true},
+				operator: newTokenNoLiteral(OR),
+				right:    literalExpr{false},
+			},
+		},
+		{
+			desc: "and_simple",
+			input: []token{
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(AND),
+				newTokenNoLiteral(FALSE),
+			},
+			want: logicalExpr{
+				left:     literalExpr{true},
+				operator: newTokenNoLiteral(AND),
+				right:    literalExpr{false},
+			},
+		},
+		{
+			desc: "chained_or",
+			input: []token{
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(OR),
+				newTokenNoLiteral(FALSE),
+				newTokenNoLiteral(OR),
+				newTokenNoLiteral(NIL),
+			},
+			want: logicalExpr{
+				left: logicalExpr{
+					left:     literalExpr{true},
+					operator: newTokenNoLiteral(OR),
+					right:    literalExpr{false},
+				},
+				operator: newTokenNoLiteral(OR),
+				right:    literalExpr{nil},
+			},
+		},
+		{
+			desc: "chained_and",
+			input: []token{
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(AND),
+				newTokenNoLiteral(FALSE),
+				newTokenNoLiteral(AND),
+				newTokenNoLiteral(NIL),
+			},
+			want: logicalExpr{
+				left: logicalExpr{
+					left:     literalExpr{true},
+					operator: newTokenNoLiteral(AND),
+					right:    literalExpr{false},
+				},
+				operator: newTokenNoLiteral(AND),
+				right:    literalExpr{nil},
+			},
+		},
+		{
+			desc: "mixed_and_or",
+			input: []token{
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(AND),
+				newTokenNoLiteral(FALSE),
+				newTokenNoLiteral(OR),
+				newTokenNoLiteral(NIL),
+			},
+			want: logicalExpr{
+				left: logicalExpr{
+					left:     literalExpr{true},
+					operator: newTokenNoLiteral(AND),
+					right:    literalExpr{false},
+				},
+				operator: newTokenNoLiteral(OR),
+				right:    literalExpr{nil},
+			},
 		},
 	}
 	for _, tC := range testCases {

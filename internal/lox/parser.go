@@ -185,9 +185,9 @@ func (p *Parser) expression() (expr, error) {
 	return out, nil
 }
 
-// assignment → IDENTIFIER "=" assignment | ternary ;
+// assignment → IDENTIFIER "=" assignment | logic_or ;
 func (p *Parser) assignment() (expr, error) {
-	out, err := p.ternary()
+	out, err := p.or()
 	if err != nil {
 		return nil, err
 	}
@@ -199,9 +199,43 @@ func (p *Parser) assignment() (expr, error) {
 		}
 		varExpr, ok := out.(variableExpr)
 		if !ok {
-			return nil, NewRuntimeError(tok, "Invalid assignment target.")
+			return nil, NewParseError(tok, "Invalid assignment target.")
 		}
 		out = assignExpr{name: varExpr.name, value: val}
+	}
+	return out, nil
+}
+
+// logic_or → logic_and ( "or" logic_and )* ;
+func (p *Parser) or() (expr, error) {
+	out, err := p.and()
+	if err != nil {
+		return nil, err
+	}
+	for p.match(OR) {
+		tok, _ := p.advance()
+		right, err := p.and()
+		if err != nil {
+			return nil, err
+		}
+		out = logicalExpr{left: out, operator: tok, right: right}
+	}
+	return out, nil
+}
+
+// logic_and → ternary ( "and" ternary )* ;
+func (p *Parser) and() (expr, error) {
+	out, err := p.ternary()
+	if err != nil {
+		return nil, err
+	}
+	for p.match(AND) {
+		tok, _ := p.advance()
+		right, err := p.ternary()
+		if err != nil {
+			return nil, err
+		}
+		out = logicalExpr{left: out, operator: tok, right: right}
 	}
 	return out, nil
 }

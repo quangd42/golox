@@ -191,6 +191,23 @@ func (i Interpreter) visitAssignExpr(e assignExpr) (any, error) {
 	return val, nil
 }
 
+func (i Interpreter) visitLogicalExpr(e logicalExpr) (any, error) {
+	leftVal, err := i.evaluate(e.left)
+	if err != nil {
+		return nil, err
+	}
+	// Short-circuit
+	if e.operator.tokenType == OR {
+		if i.isTruthy(leftVal) {
+			return leftVal, nil
+		}
+	} else if !i.isTruthy(leftVal) {
+		return leftVal, nil
+	}
+
+	return i.evaluate(e.right)
+}
+
 func (i *Interpreter) execute(s stmt) error {
 	return s.accept(i)
 }

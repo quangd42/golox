@@ -14,6 +14,7 @@ var ExprTypes = []string{
 	"Binary: left expr, operator token, right expr",
 	"Grouping: expr expr",
 	"Literal: value any",
+	"Logical: left expr, operator token, right expr",
 	"Unary: operator token, right expr",
 	"Variable: name token",
 	"Assign: name token, value expr",
