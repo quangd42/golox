@@ -11,6 +11,7 @@ type stmtVisitor interface {
 	visitIfStmt(e ifStmt) error
 	visitPrintStmt(e printStmt) error
 	visitVarStmt(e varStmt) error
+	visitWhileStmt(e whileStmt) error
 	visitBlockStmt(e blockStmt) error
 }
 
@@ -47,6 +48,15 @@ type varStmt struct {
 
 func (e varStmt) accept(v stmtVisitor) error {
 	return v.visitVarStmt(e)
+}
+
+type whileStmt struct {
+	condition expr
+	body      stmt
+}
+
+func (e whileStmt) accept(v stmtVisitor) error {
+	return v.visitWhileStmt(e)
 }
 
 type blockStmt struct {

@@ -270,6 +270,22 @@ func (i Interpreter) visitPrintStmt(s printStmt) error {
 	return nil
 }
 
+func (i Interpreter) visitWhileStmt(s whileStmt) error {
+	for {
+		condVal, err := i.evaluate(s.condition)
+		if err != nil {
+			return err
+		}
+		if !i.isTruthy(condVal) {
+			return nil
+		}
+		err = i.execute(s.body)
+		if err != nil {
+			return err
+		}
+	}
+}
+
 func (i *Interpreter) visitBlockStmt(s blockStmt) error {
 	return i.executeBlock(s, NewEnvironment(i.env))
 }

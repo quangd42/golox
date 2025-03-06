@@ -69,17 +69,16 @@ func (p *Parser) varDecl() (stmt, error) {
 	return varStmt{name: name, initializer: initializer}, nil
 }
 
-// statement → exprStmt | ifStmt | printStmt | block ;
+// statement → exprStmt | ifStmt | printStmt | whileStmt | block ;
 func (p *Parser) statement() (stmt, error) {
 	switch {
 	case p.match(PRINT):
-		p.advance()
 		return p.printStatement()
 	case p.match(IF):
-		p.advance()
 		return p.ifStatement()
+	case p.match(WHILE):
+		return p.whileStatement()
 	case p.match(LEFT_BRACE):
-		p.advance()
 		stmts, err := p.block()
 		if err != nil {
 			return nil, err
@@ -104,12 +103,12 @@ func (p *Parser) exprStatement() (stmt, error) {
 
 // ifStmt → "if" expression block ( "else" block )? ;
 func (p *Parser) ifStatement() (stmt, error) {
+	if _, ok := p.matchConsume(IF); !ok {
+		return nil, NewParseError(p.peek(), "Expect if statement.")
+	}
 	condition, err := p.expression()
 	if err != nil {
 		return nil, err
-	}
-	if _, ok := p.matchConsume(LEFT_BRACE); !ok {
-		return nil, NewParseError(p.peek(), "Expect '{' after condition.")
 	}
 	thenStmts, err := p.block()
 	if err != nil {
@@ -117,9 +116,6 @@ func (p *Parser) ifStatement() (stmt, error) {
 	}
 	var elseBlock stmt
 	if _, ok := p.matchConsume(ELSE); ok {
-		if _, ok := p.matchConsume(LEFT_BRACE); !ok {
-			return nil, NewParseError(p.peek(), "Expect '{' after 'else'.")
-		}
 		elseStmts, err := p.block()
 		if err != nil {
 			return nil, err
@@ -135,6 +131,9 @@ func (p *Parser) ifStatement() (stmt, error) {
 
 // printStmt → "print" expression ";" ;
 func (p *Parser) printStatement() (stmt, error) {
+	if _, ok := p.matchConsume(PRINT); !ok {
+		return nil, NewParseError(p.peek(), "Expect print statement.")
+	}
 	expr, err := p.expression()
 	if err != nil {
 		return nil, err
@@ -145,8 +144,27 @@ func (p *Parser) printStatement() (stmt, error) {
 	return printStmt{expr: expr}, nil
 }
 
+// whileStmt → "while" expression block ;
+func (p *Parser) whileStatement() (stmt, error) {
+	if _, ok := p.matchConsume(WHILE); !ok {
+		return nil, NewParseError(p.peek(), "Expect loop.")
+	}
+	condition, err := p.expression()
+	if err != nil {
+		return nil, err
+	}
+	stmts, err := p.block()
+	if err != nil {
+		return nil, err
+	}
+	return whileStmt{condition: condition, body: blockStmt{stmts}}, nil
+}
+
 // block → "{" declaration* "}" ;
 func (p *Parser) block() ([]stmt, error) {
+	if _, ok := p.matchConsume(LEFT_BRACE); !ok {
+		return nil, NewParseError(p.peek(), "Expect block.")
+	}
 	out := make([]stmt, 0)
 	for !p.match(RIGHT_BRACE) && !p.isAtEnd() {
 		stmt, err := p.declaration()

@@ -648,6 +648,108 @@ func Test_interpretBlockStmt(t *testing.T) {
 	}
 }
 
+func Test_interpretWhileStmt(t *testing.T) {
+	testCases := []struct {
+		desc      string
+		condition expr
+		body      stmt
+		initEnv   map[string]any
+		wantEnv   map[string]any
+		err       error
+	}{
+		{
+			desc:      "false_condition_no_iteration",
+			condition: literalExpr{false},
+			body: exprStmt{
+				expr: assignExpr{
+					name:  newToken(IDENTIFIER, "x", nil, 1),
+					value: literalExpr{1.0},
+				},
+			},
+			initEnv: map[string]any{"x": 0.0},
+			wantEnv: map[string]any{"x": 0.0},
+			err:     nil,
+		},
+		{
+			desc: "counter_loop",
+			condition: binaryExpr{
+				left:     variableExpr{name: newToken(IDENTIFIER, "counter", nil, 1)},
+				operator: newTokenNoLiteral(LESS),
+				right:    literalExpr{3.0},
+			},
+			body: blockStmt{
+				statements: []stmt{
+					exprStmt{
+						expr: assignExpr{
+							name: newToken(IDENTIFIER, "counter", nil, 1),
+							value: binaryExpr{
+								left:     variableExpr{name: newToken(IDENTIFIER, "counter", nil, 1)},
+								operator: newTokenNoLiteral(PLUS),
+								right:    literalExpr{1.0},
+							},
+						},
+					},
+					exprStmt{
+						expr: assignExpr{
+							name: newToken(IDENTIFIER, "sum", nil, 1),
+							value: binaryExpr{
+								left:     variableExpr{name: newToken(IDENTIFIER, "sum", nil, 1)},
+								operator: newTokenNoLiteral(PLUS),
+								right:    literalExpr{1.0},
+							},
+						},
+					},
+				},
+			},
+			initEnv: map[string]any{"counter": 0.0, "sum": 0.0},
+			wantEnv: map[string]any{"counter": 3.0, "sum": 3.0},
+			err:     nil,
+		},
+		{
+			desc:      "non_boolean_condition",
+			condition: variableExpr{name: newToken(IDENTIFIER, "cond", nil, 1)},
+			body: blockStmt{statements: []stmt{
+				exprStmt{expr: assignExpr{
+					name:  newToken(IDENTIFIER, "x", nil, 1),
+					value: literalExpr{1.0},
+				}},
+				exprStmt{expr: assignExpr{
+					name:  newToken(IDENTIFIER, "cond", nil, 1),
+					value: literalExpr{false},
+				}},
+			}},
+			initEnv: map[string]any{"cond": "not a boolean", "x": 0.0},
+			wantEnv: map[string]any{"cond": false, "x": 1.0},
+			err:     nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			interpreter := NewInterpreter()
+			for k, v := range tC.initEnv {
+				interpreter.env.define(k, v)
+			}
+
+			stmt := whileStmt{
+				condition: tC.condition,
+				body:      tC.body,
+			}
+
+			err := interpreter.visitWhileStmt(stmt)
+			if err != nil {
+				assert.EqualError(t, err, tC.err.Error())
+			}
+
+			for k, v := range tC.wantEnv {
+				val, exists := interpreter.env.values[k]
+				assert.True(t, exists)
+				assert.Equal(t, v, val)
+			}
+		})
+	}
+}
+
 func Test_interpretIfStmt(t *testing.T) {
 	testCases := []struct {
 		desc      string

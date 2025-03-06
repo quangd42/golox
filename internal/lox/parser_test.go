@@ -835,7 +835,7 @@ func Test_expression(t *testing.T) {
 	}
 }
 
-func Test_statement(t *testing.T) {
+func Test_printStmt(t *testing.T) {
 	testCases := []struct {
 		desc  string
 		input []token
@@ -869,6 +869,37 @@ func Test_statement(t *testing.T) {
 			},
 		},
 		{
+			desc: "missing_semicolon",
+			input: []token{
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(EOF),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(EOF), "Expect ';' after expression."),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.statement()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_exprStmt(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  stmt
+		err   error
+	}{
+		{
 			desc: "exprStmt",
 			input: []token{
 				newToken(NUMBER, "42", 42, 0),
@@ -884,16 +915,27 @@ func Test_statement(t *testing.T) {
 				},
 			},
 		},
-		{
-			desc: "missing_semicolon",
-			input: []token{
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(EOF),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(EOF), "Expect ';' after expression."),
-		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.statement()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_blockStmt(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  stmt
+		err   error
+	}{
 		{
 			desc: "simple_block",
 			input: []token{
@@ -980,6 +1022,27 @@ func Test_statement(t *testing.T) {
 			want: nil,
 			err:  NewParseError(newTokenNoLiteral(EOF), "Expect '}' after block."),
 		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.statement()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_ifStmt(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  stmt
+		err   error
+	}{
 		{
 			desc: "simple_if_then",
 			input: []token{
@@ -1079,7 +1142,7 @@ func Test_statement(t *testing.T) {
 				newTokenNoLiteral(SEMICOLON),
 			},
 			want: nil,
-			err:  NewParseError(newTokenNoLiteral(PRINT), "Expect '{' after condition."),
+			err:  NewParseError(newTokenNoLiteral(PRINT), "Expect block."),
 		},
 		{
 			desc: "else_missing_block",
@@ -1097,7 +1160,110 @@ func Test_statement(t *testing.T) {
 				newTokenNoLiteral(SEMICOLON),
 			},
 			want: nil,
-			err:  NewParseError(newTokenNoLiteral(PRINT), "Expect '{' after 'else'."),
+			err:  NewParseError(newTokenNoLiteral(PRINT), "Expect block."),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.statement()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_whileStmt(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  stmt
+		err   error
+	}{
+		{
+			desc: "simple_while",
+			input: []token{
+				newTokenNoLiteral(WHILE),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: whileStmt{
+				condition: literalExpr{true},
+				body: blockStmt{
+					statements: []stmt{
+						printStmt{expr: literalExpr{42}},
+					},
+				},
+			},
+		},
+		{
+			desc: "while_complex_condition",
+			input: []token{
+				newTokenNoLiteral(WHILE),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(GREATER),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: whileStmt{
+				condition: binaryExpr{
+					left:     literalExpr{10},
+					operator: newTokenNoLiteral(GREATER),
+					right:    literalExpr{5},
+				},
+				body: blockStmt{
+					statements: []stmt{
+						printStmt{expr: literalExpr{true}},
+					},
+				},
+			},
+		},
+		{
+			desc: "while_missing_block",
+			input: []token{
+				newTokenNoLiteral(WHILE),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(PRINT), "Expect block."),
+		},
+		{
+			desc: "while_with_parentheses",
+			input: []token{
+				newTokenNoLiteral(WHILE),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(GREATER),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: whileStmt{
+				condition: groupingExpr{binaryExpr{
+					left:     literalExpr{10},
+					operator: newTokenNoLiteral(GREATER),
+					right:    literalExpr{5},
+				}},
+				body: blockStmt{statements: []stmt{printStmt{expr: literalExpr{true}}}},
+			},
 		},
 	}
 	for _, tC := range testCases {
