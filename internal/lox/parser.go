@@ -69,13 +69,15 @@ func (p *Parser) varDecl() (stmt, error) {
 	return varStmt{name: name, initializer: initializer}, nil
 }
 
-// statement → exprStmt | ifStmt | printStmt | whileStmt | block ;
+// statement → exprStmt | forStmt | ifStmt | printStmt | whileStmt | block ;
 func (p *Parser) statement() (stmt, error) {
 	switch {
-	case p.match(PRINT):
-		return p.printStatement()
+	case p.match(FOR):
+		return p.forStatement()
 	case p.match(IF):
 		return p.ifStatement()
+	case p.match(PRINT):
+		return p.printStatement()
 	case p.match(WHILE):
 		return p.whileStatement()
 	case p.match(LEFT_BRACE):
@@ -99,6 +101,71 @@ func (p *Parser) exprStatement() (stmt, error) {
 		return nil, NewParseError(p.peek(), "Expect ';' after expression.")
 	}
 	return exprStmt{expr: expr}, nil
+}
+
+// forStmt → "for" (( varDecl | exprStmt | ";" ) expression? ";" expression?)? block ;
+func (p *Parser) forStatement() (stmt, error) {
+	var err error
+	if _, ok := p.matchConsume(FOR); !ok {
+		return nil, NewParseError(p.peek(), "Expect loop.")
+	}
+	var cond expr
+	if p.match(LEFT_BRACE) {
+		cond = literalExpr{true}
+		bodyStmts, err := p.block()
+		if err != nil {
+			return nil, err
+		}
+		return whileStmt{condition: cond, body: blockStmt{bodyStmts}}, nil
+	}
+
+	var initializer stmt
+	if p.match(VAR) {
+		initializer, err = p.varDecl()
+	} else if !p.match(SEMICOLON) {
+		initializer, err = p.exprStatement()
+	} else {
+		p.advance() // consume ';'
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if !p.match(SEMICOLON) {
+		cond, err = p.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if _, ok := p.matchConsume(SEMICOLON); !ok {
+		return nil, NewParseError(p.peek(), "Expect ';' after condition.")
+	}
+
+	var inc expr
+	if !p.match(LEFT_BRACE) {
+		inc, err = p.expression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	bodyStmts, err := p.block()
+	if err != nil {
+		return nil, err
+	}
+
+	if inc != nil {
+		bodyStmts = append(bodyStmts, exprStmt{inc})
+	}
+	if cond == nil {
+		cond = literalExpr{true}
+	}
+	var out stmt = whileStmt{condition: cond, body: blockStmt{bodyStmts}}
+	if initializer != nil {
+		out = blockStmt{[]stmt{initializer, out}}
+	}
+
+	return out, nil
 }
 
 // ifStmt → "if" expression block ( "else" block )? ;

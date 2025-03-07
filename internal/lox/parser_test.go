@@ -1279,6 +1279,276 @@ func Test_whileStmt(t *testing.T) {
 	}
 }
 
+func Test_forStatement(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  stmt
+		err   error
+	}{
+		{
+			desc: "basic_for_loop",
+			input: []token{
+				newTokenNoLiteral(FOR),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "0", 0, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(LESS),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "1", 1, 0),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: blockStmt{
+				statements: []stmt{
+					exprStmt{expr: assignExpr{
+						name:  newToken(IDENTIFIER, "i", "i", 0),
+						value: literalExpr{0},
+					}},
+					whileStmt{
+						condition: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
+							operator: newTokenNoLiteral(LESS),
+							right:    literalExpr{10},
+						},
+						body: blockStmt{
+							statements: []stmt{
+								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 0)}},
+								exprStmt{expr: assignExpr{
+									name: newToken(IDENTIFIER, "i", "i", 0),
+									value: binaryExpr{
+										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
+										operator: newTokenNoLiteral(PLUS),
+										right:    literalExpr{1},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "for_loop_without_initializer",
+			input: []token{
+				newTokenNoLiteral(FOR),
+				newTokenNoLiteral(SEMICOLON),
+				newToken(IDENTIFIER, "x", "x", 0),
+				newTokenNoLiteral(LESS),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newToken(IDENTIFIER, "x", "x", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(IDENTIFIER, "x", "x", 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "1", 1, 0),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(IDENTIFIER, "x", "x", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: whileStmt{
+				condition: binaryExpr{
+					left:     variableExpr{newToken(IDENTIFIER, "x", "x", 0)},
+					operator: newTokenNoLiteral(LESS),
+					right:    literalExpr{5},
+				},
+				body: blockStmt{
+					statements: []stmt{
+						printStmt{expr: variableExpr{newToken(IDENTIFIER, "x", "x", 0)}},
+						exprStmt{expr: assignExpr{
+							name: newToken(IDENTIFIER, "x", "x", 0),
+							value: binaryExpr{
+								left:     variableExpr{newToken(IDENTIFIER, "x", "x", 0)},
+								operator: newTokenNoLiteral(PLUS),
+								right:    literalExpr{1},
+							},
+						}},
+					},
+				},
+			},
+		},
+		{
+			desc: "for_loop_without_condition",
+			input: []token{
+				newTokenNoLiteral(FOR),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "0", 0, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(SEMICOLON),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "1", 1, 0),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: blockStmt{
+				statements: []stmt{
+					exprStmt{expr: assignExpr{
+						name:  newToken(IDENTIFIER, "i", "i", 0),
+						value: literalExpr{0},
+					}},
+					whileStmt{
+						condition: literalExpr{true},
+						body: blockStmt{
+							statements: []stmt{
+								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 0)}},
+								exprStmt{expr: assignExpr{
+									name: newToken(IDENTIFIER, "i", "i", 0),
+									value: binaryExpr{
+										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
+										operator: newTokenNoLiteral(PLUS),
+										right:    literalExpr{1},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "for_loop_without_increment",
+			input: []token{
+				newTokenNoLiteral(FOR),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "0", 0, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(LESS),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: blockStmt{
+				statements: []stmt{
+					exprStmt{expr: assignExpr{
+						name:  newToken(IDENTIFIER, "i", "i", 0),
+						value: literalExpr{0},
+					}},
+					whileStmt{
+						condition: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
+							operator: newTokenNoLiteral(LESS),
+							right:    literalExpr{10},
+						},
+						body: blockStmt{
+							statements: []stmt{
+								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 0)}},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "empty_for_loop",
+			input: []token{
+				newTokenNoLiteral(FOR),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newTokenNoLiteral(TRUE),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: whileStmt{
+				condition: literalExpr{true},
+				body: blockStmt{
+					statements: []stmt{
+						printStmt{expr: literalExpr{true}},
+					},
+				},
+			},
+		},
+		{
+			desc: "for_loop_with_var_declaration",
+			input: []token{
+				newTokenNoLiteral(FOR),
+				newTokenNoLiteral(VAR),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(NUMBER, "0", 0, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(LESS),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(SEMICOLON),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(EQUAL),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "1", 1, 0),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(IDENTIFIER, "i", "i", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: blockStmt{
+				statements: []stmt{
+					varStmt{
+						name:        newToken(IDENTIFIER, "i", "i", 0),
+						initializer: literalExpr{0},
+					},
+					whileStmt{
+						condition: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
+							operator: newTokenNoLiteral(LESS),
+							right:    literalExpr{5},
+						},
+						body: blockStmt{
+							statements: []stmt{
+								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 0)}},
+								exprStmt{expr: assignExpr{
+									name: newToken(IDENTIFIER, "i", "i", 0),
+									value: binaryExpr{
+										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
+										operator: newTokenNoLiteral(PLUS),
+										right:    literalExpr{1},
+									},
+								}},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.statement()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
 func Test_declaration(t *testing.T) {
 	testCases := []struct {
 		desc  string
