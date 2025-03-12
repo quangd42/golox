@@ -1,0 +1,4 @@
+print clock;
+
+var time = clock();
+print time;

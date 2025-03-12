@@ -3,14 +3,18 @@ package lox
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
 type Interpreter struct {
-	env *environment
+	globals *environment
+	env     *environment
 }
 
 func NewInterpreter() *Interpreter {
-	return &Interpreter{NewGlobalEnvironment()}
+	globals := NewGlobalEnvironment()
+	defineClockFn(globals)
+	return &Interpreter{globals: globals, env: globals}
 }
 
 func (i Interpreter) Interpret(stmts []stmt) error {
@@ -18,7 +22,7 @@ func (i Interpreter) Interpret(stmts []stmt) error {
 		err := i.execute(stmt)
 		if err != nil {
 			// TODO: Log
-			fmt.Println(err)
+			fmt.Printf("%v\n", err)
 			return err
 		}
 	}
@@ -48,7 +52,7 @@ func (i Interpreter) visitUnaryExpr(e unaryExpr) (any, error) {
 	case BANG:
 		return !i.isTruthy(val), nil
 	default:
-		return nil, NewRuntimeError(e.operator, "Undefined Operator.")
+		return nil, NewRuntimeError(e.operator, "Undefined Unary Operator.")
 	}
 }
 
@@ -129,7 +133,7 @@ func (i Interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
 	case EQUAL_EQUAL:
 		return left == right, nil
 	default:
-		return nil, NewRuntimeError(e.operator, "Undefined Operator.")
+		return nil, NewRuntimeError(e.operator, "Undefined Binary Operator.")
 	}
 }
 
@@ -208,6 +212,32 @@ func (i Interpreter) visitLogicalExpr(e logicalExpr) (any, error) {
 	return i.evaluate(e.right)
 }
 
+func (i Interpreter) visitCallExpr(e callExpr) (any, error) {
+	callee, err := i.evaluate(e.callee)
+	if err != nil {
+		return nil, err
+	}
+	args := make([]any, len(e.arguments))
+	for idx, argExpr := range e.arguments {
+		arg, err := i.evaluate(argExpr)
+		if err != nil {
+			return nil, err
+		}
+		args[idx] = arg
+	}
+	function, ok := callee.(callable)
+	if !ok {
+		return nil, NewRuntimeError(e.paren, "Can only call functions and classes.")
+	}
+	if function.arity() != len(args) {
+		return nil, NewRuntimeError(
+			e.paren,
+			fmt.Sprintf("Expected %d arguments but got %d.", function.arity(), len(args)),
+		)
+	}
+	return function.call(i, args)
+}
+
 func (i *Interpreter) execute(s stmt) error {
 	return s.accept(i)
 }
@@ -248,6 +278,11 @@ func (i Interpreter) visitExprStmt(s exprStmt) error {
 	return nil
 }
 
+func (i *Interpreter) visitFunctionStmt(s functionStmt) error {
+	i.env.define(s.name.lexeme, function{s})
+	return nil
+}
+
 func (i Interpreter) visitIfStmt(s ifStmt) error {
 	condition, err := i.evaluate(s.condition)
 	if err != nil {
@@ -266,8 +301,21 @@ func (i Interpreter) visitPrintStmt(s printStmt) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(val)
+	fmt.Printf("%v\n", val)
 	return nil
+}
+
+// Use error to exit execution early
+func (i Interpreter) visitReturnStmt(s returnStmt) error {
+	var val any
+	var err error
+	if s.value != nil {
+		val, err = i.evaluate(s.value)
+		if err != nil {
+			return err
+		}
+	}
+	return &returnValue{value: val}
 }
 
 func (i Interpreter) visitWhileStmt(s whileStmt) error {
@@ -288,4 +336,14 @@ func (i Interpreter) visitWhileStmt(s whileStmt) error {
 
 func (i *Interpreter) visitBlockStmt(s blockStmt) error {
 	return i.executeBlock(s, NewEnvironment(i.env))
+}
+
+func defineClockFn(env *environment) {
+	env.define("clock", nativeFn{
+		arityFn: func() int { return 0 },
+		callFn: func(i Interpreter, args []any) (any, error) {
+			return time.Now().Unix(), nil
+		},
+		stringFn: func() string { return "<native fn>" },
+	})
 }

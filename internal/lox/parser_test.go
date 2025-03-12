@@ -684,6 +684,169 @@ func Test_assignment(t *testing.T) {
 	}
 }
 
+func Test_call(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  expr
+		err   error
+	}{
+		{
+			desc: "simple_call",
+			input: []token{
+				newToken(IDENTIFIER, "print", "print", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(STRING, "hello", "hello", 0),
+				newTokenNoLiteral(RIGHT_PAREN),
+			},
+			want: callExpr{
+				callee: variableExpr{newToken(IDENTIFIER, "print", "print", 0)},
+				paren:  newTokenNoLiteral(RIGHT_PAREN),
+				arguments: []expr{
+					literalExpr{"hello"},
+				},
+			},
+		},
+		{
+			desc: "no_arguments",
+			input: []token{
+				newToken(IDENTIFIER, "clock", "clock", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newTokenNoLiteral(RIGHT_PAREN),
+			},
+			want: callExpr{
+				callee:    variableExpr{newToken(IDENTIFIER, "clock", "clock", 0)},
+				paren:     newTokenNoLiteral(RIGHT_PAREN),
+				arguments: []expr{},
+			},
+		},
+		{
+			desc: "multiple_arguments",
+			input: []token{
+				newToken(IDENTIFIER, "sum", "sum", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(NUMBER, "1", 1, 0),
+				newTokenNoLiteral(COMMA),
+				newToken(NUMBER, "2", 2, 0),
+				newTokenNoLiteral(COMMA),
+				newToken(NUMBER, "3", 3, 0),
+				newTokenNoLiteral(RIGHT_PAREN),
+			},
+			want: callExpr{
+				callee: variableExpr{newToken(IDENTIFIER, "sum", "sum", 0)},
+				paren:  newTokenNoLiteral(RIGHT_PAREN),
+				arguments: []expr{
+					literalExpr{1},
+					literalExpr{2},
+					literalExpr{3},
+				},
+			},
+		},
+		{
+			desc: "nested_calls",
+			input: []token{
+				newToken(IDENTIFIER, "outer", "outer", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(IDENTIFIER, "inner", "inner", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(RIGHT_PAREN),
+			},
+			want: callExpr{
+				callee: variableExpr{newToken(IDENTIFIER, "outer", "outer", 0)},
+				paren:  newTokenNoLiteral(RIGHT_PAREN),
+				arguments: []expr{
+					callExpr{
+						callee: variableExpr{newToken(IDENTIFIER, "inner", "inner", 0)},
+						paren:  newTokenNoLiteral(RIGHT_PAREN),
+						arguments: []expr{
+							literalExpr{42},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "multiple_consecutive_calls",
+			input: []token{
+				newToken(IDENTIFIER, "first", "first", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(LEFT_PAREN),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(LEFT_PAREN),
+				newTokenNoLiteral(RIGHT_PAREN),
+			},
+			want: callExpr{
+				callee: callExpr{
+					callee: callExpr{
+						callee:    variableExpr{newToken(IDENTIFIER, "first", "first", 0)},
+						paren:     newTokenNoLiteral(RIGHT_PAREN),
+						arguments: []expr{},
+					},
+					paren:     newTokenNoLiteral(RIGHT_PAREN),
+					arguments: []expr{},
+				},
+				paren:     newTokenNoLiteral(RIGHT_PAREN),
+				arguments: []expr{},
+			},
+		},
+		{
+			desc: "call_with_expressions",
+			input: []token{
+				newToken(IDENTIFIER, "calc", "calc", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(NUMBER, "1", 1, 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "2", 2, 0),
+				newTokenNoLiteral(COMMA),
+				newToken(NUMBER, "3", 3, 0),
+				newTokenNoLiteral(STAR),
+				newToken(NUMBER, "4", 4, 0),
+				newTokenNoLiteral(RIGHT_PAREN),
+			},
+			want: callExpr{
+				callee: variableExpr{newToken(IDENTIFIER, "calc", "calc", 0)},
+				paren:  newTokenNoLiteral(RIGHT_PAREN),
+				arguments: []expr{
+					binaryExpr{
+						left:     literalExpr{1},
+						operator: newTokenNoLiteral(PLUS),
+						right:    literalExpr{2},
+					},
+					binaryExpr{
+						left:     literalExpr{3},
+						operator: newTokenNoLiteral(STAR),
+						right:    literalExpr{4},
+					},
+				},
+			},
+		},
+		{
+			desc: "missing_right_paren",
+			input: []token{
+				newToken(IDENTIFIER, "print", "print", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(STRING, "hello", "hello", 0),
+			},
+			want: nil,
+			err:  NewParseError(newToken(STRING, "hello", "hello", 0), "Expect ')' after arguments."),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.call()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
 func Test_expression(t *testing.T) {
 	testCases := []struct {
 		desc  string
@@ -1614,6 +1777,236 @@ func Test_declaration(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			parser := NewParser(tC.input)
 			got, err := parser.declaration()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_function(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  stmt
+		err   error
+	}{
+		{
+			desc: "function_declaration",
+			input: []token{
+				newTokenNoLiteral(FN),
+				newToken(IDENTIFIER, "greet", "greet", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(IDENTIFIER, "name", "name", 0),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(STRING, "Hello, ", "Hello, ", 0),
+				newTokenNoLiteral(PLUS),
+				newToken(IDENTIFIER, "name", "name", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: functionStmt{
+				name: newToken(IDENTIFIER, "greet", "greet", 0),
+				params: []token{
+					newToken(IDENTIFIER, "name", "name", 0),
+				},
+				body: []stmt{
+					printStmt{
+						expr: binaryExpr{
+							left:     literalExpr{"Hello, "},
+							operator: newTokenNoLiteral(PLUS),
+							right:    variableExpr{newToken(IDENTIFIER, "name", "name", 0)},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "function_no_params",
+			input: []token{
+				newTokenNoLiteral(FN),
+				newToken(IDENTIFIER, "hello", "hello", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(STRING, "Hello!", "Hello!", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: functionStmt{
+				name:   newToken(IDENTIFIER, "hello", "hello", 0),
+				params: []token{},
+				body: []stmt{
+					printStmt{expr: literalExpr{"Hello!"}},
+				},
+			},
+		},
+		{
+			desc: "function_multiple_params",
+			input: []token{
+				newTokenNoLiteral(FN),
+				newToken(IDENTIFIER, "add", "add", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(IDENTIFIER, "a", "a", 0),
+				newTokenNoLiteral(COMMA),
+				newToken(IDENTIFIER, "b", "b", 0),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(PRINT),
+				newToken(IDENTIFIER, "a", "a", 0),
+				newTokenNoLiteral(PLUS),
+				newToken(IDENTIFIER, "b", "b", 0),
+				newTokenNoLiteral(SEMICOLON),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: functionStmt{
+				name: newToken(IDENTIFIER, "add", "add", 0),
+				params: []token{
+					newToken(IDENTIFIER, "a", "a", 0),
+					newToken(IDENTIFIER, "b", "b", 0),
+				},
+				body: []stmt{
+					printStmt{
+						expr: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "a", "a", 0)},
+							operator: newTokenNoLiteral(PLUS),
+							right:    variableExpr{newToken(IDENTIFIER, "b", "b", 0)},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc: "missing_function_name",
+			input: []token{
+				newTokenNoLiteral(FN),
+				newTokenNoLiteral(LEFT_PAREN),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(LEFT_PAREN), "Expect function name."),
+		},
+		{
+			desc: "missing_left_paren",
+			input: []token{
+				newTokenNoLiteral(FN),
+				newToken(IDENTIFIER, "test", "test", 0),
+				newToken(IDENTIFIER, "param", "param", 0),
+				newTokenNoLiteral(RIGHT_PAREN),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: nil,
+			err:  NewParseError(newToken(IDENTIFIER, "param", "param", 0), "Expect '(' after function name."),
+		},
+		{
+			desc: "missing_right_paren",
+			input: []token{
+				newTokenNoLiteral(FN),
+				newToken(IDENTIFIER, "test", "test", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newToken(IDENTIFIER, "param", "param", 0),
+				newTokenNoLiteral(LEFT_BRACE),
+				newTokenNoLiteral(RIGHT_BRACE),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(LEFT_BRACE), "Expect ')' after parameters."),
+		},
+		{
+			desc: "missing_body",
+			input: []token{
+				newTokenNoLiteral(FN),
+				newToken(IDENTIFIER, "test", "test", 0),
+				newTokenNoLiteral(LEFT_PAREN),
+				newTokenNoLiteral(RIGHT_PAREN),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(RIGHT_PAREN), "Expect block."),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.function("function")
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
+func Test_returnStatement(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input []token
+		want  stmt
+		err   error
+	}{
+		{
+			desc: "return_with_value",
+			input: []token{
+				newTokenNoLiteral(RETURN),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: returnStmt{
+				keyword: newTokenNoLiteral(RETURN),
+				value:   literalExpr{42},
+			},
+		},
+		{
+			desc: "return_without_value",
+			input: []token{
+				newTokenNoLiteral(RETURN),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: returnStmt{
+				keyword: newTokenNoLiteral(RETURN),
+				value:   nil,
+			},
+		},
+		{
+			desc: "return_with_expression",
+			input: []token{
+				newTokenNoLiteral(RETURN),
+				newToken(NUMBER, "10", 10, 0),
+				newTokenNoLiteral(PLUS),
+				newToken(NUMBER, "5", 5, 0),
+				newTokenNoLiteral(SEMICOLON),
+			},
+			want: returnStmt{
+				keyword: newTokenNoLiteral(RETURN),
+				value: binaryExpr{
+					left:     literalExpr{10},
+					operator: newTokenNoLiteral(PLUS),
+					right:    literalExpr{5},
+				},
+			},
+		},
+		{
+			desc: "missing_semicolon",
+			input: []token{
+				newTokenNoLiteral(RETURN),
+				newToken(NUMBER, "42", 42, 0),
+				newTokenNoLiteral(EOF),
+			},
+			want: nil,
+			err:  NewParseError(newTokenNoLiteral(EOF), "Expect ';' after return value."),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			parser := NewParser(tC.input)
+			got, err := parser.returnStatement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
 				return

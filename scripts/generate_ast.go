@@ -12,6 +12,7 @@ import (
 
 var ExprTypes = []string{
 	"Binary: left expr, operator token, right expr",
+	"Call: callee expr, paren token, arguments []expr",
 	"Grouping: expr expr",
 	"Literal: value any",
 	"Logical: left expr, operator token, right expr",
@@ -22,8 +23,10 @@ var ExprTypes = []string{
 
 var StmtTypes = []string{
 	"Expr: expr expr",
+	"Function: name token, params []token, body []stmt",
 	"If: condition expr, thenBranch stmt, elseBranch stmt",
 	"Print: expr expr",
+	"Return: keyword token, value expr",
 	"Var: name token, initializer expr",
 	"While: condition expr, body stmt",
 	"Block: statements []stmt",

@@ -40,7 +40,6 @@ func runFile(i *lox.Interpreter, filename string) {
 	err = run(i, b)
 	if err != nil {
 		var rtErr *lox.RuntimeError
-		fmt.Printf("%v\n", err)
 		if errors.As(err, &rtErr) {
 			os.Exit(70)
 		}

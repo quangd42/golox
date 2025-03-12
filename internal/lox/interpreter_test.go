@@ -495,6 +495,115 @@ func Test_interpretLogicalExpr(t *testing.T) {
 	}
 }
 
+func Test_interpretCallExpr(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		input   callExpr
+		initEnv map[string]any
+		want    any
+		err     error
+	}{
+		{
+			desc: "call_simple_function",
+			input: callExpr{
+				callee: variableExpr{name: newToken(IDENTIFIER, "test", nil, 1)},
+				paren:  newToken(RIGHT_PAREN, ")", nil, 1),
+				arguments: []expr{
+					literalExpr{42.0},
+				},
+			},
+			initEnv: map[string]any{
+				"test": function{
+					declaration: functionStmt{
+						name:   newToken(IDENTIFIER, "test", nil, 1),
+						params: []token{newToken(IDENTIFIER, "x", nil, 1)},
+						body: []stmt{
+							returnStmt{
+								keyword: newToken(RETURN, "return", nil, 1),
+								value:   variableExpr{name: newToken(IDENTIFIER, "x", nil, 1)},
+							},
+						},
+					},
+				},
+			},
+			want: 42.0,
+			err:  nil,
+		},
+		{
+			desc: "call_undefined_function",
+			input: callExpr{
+				callee: variableExpr{name: newToken(IDENTIFIER, "undefined", nil, 1)},
+				paren:  newToken(RIGHT_PAREN, ")", nil, 1),
+				arguments: []expr{
+					literalExpr{42.0},
+				},
+			},
+			initEnv: map[string]any{},
+			want:    nil,
+			err:     NewRuntimeError(newToken(IDENTIFIER, "undefined", nil, 1), "Undefined variable 'undefined'."),
+		},
+		{
+			desc: "call_non_function",
+			input: callExpr{
+				callee: variableExpr{name: newToken(IDENTIFIER, "notfunc", nil, 1)},
+				paren:  newToken(RIGHT_PAREN, ")", nil, 1),
+				arguments: []expr{
+					literalExpr{42.0},
+				},
+			},
+			initEnv: map[string]any{
+				"notfunc": "string",
+			},
+			want: nil,
+			err:  NewRuntimeError(newToken(RIGHT_PAREN, ")", nil, 1), "Can only call functions and classes."),
+		},
+		{
+			desc: "wrong_arity",
+			input: callExpr{
+				callee: variableExpr{name: newToken(IDENTIFIER, "test", nil, 1)},
+				paren:  newToken(RIGHT_PAREN, ")", nil, 1),
+				arguments: []expr{
+					literalExpr{42.0},
+					literalExpr{43.0},
+				},
+			},
+			initEnv: map[string]any{
+				"test": function{
+					declaration: functionStmt{
+						name:   newToken(IDENTIFIER, "test", nil, 1),
+						params: []token{newToken(IDENTIFIER, "x", nil, 1)},
+						body: []stmt{
+							returnStmt{
+								keyword: newToken(RETURN, "return", nil, 1),
+								value:   variableExpr{name: newToken(IDENTIFIER, "x", nil, 1)},
+							},
+						},
+					},
+				},
+			},
+			want: nil,
+			err:  NewRuntimeError(newToken(RIGHT_PAREN, ")", nil, 1), "Expected 1 arguments but got 2."),
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			interpreter := NewInterpreter()
+			for k, v := range tC.initEnv {
+				interpreter.env.define(k, v)
+			}
+
+			got, err := interpreter.visitCallExpr(tC.input)
+			assert.Equal(t, tC.want, got)
+			if tC.err != nil {
+				assert.EqualError(t, err, tC.err.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func Test_interpretVarStmt(t *testing.T) {
 	testCases := []struct {
 		desc        string
@@ -643,6 +752,79 @@ func Test_interpretBlockStmt(t *testing.T) {
 					_, exists := interpreter.env.values[varStmt.name.lexeme]
 					assert.False(t, exists)
 				}
+			}
+		})
+	}
+}
+
+func Test_interpretReturnStmt(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		input   returnStmt
+		initEnv map[string]any
+		wantVal any
+		wantErr error
+	}{
+		{
+			desc: "return_literal_number",
+			input: returnStmt{
+				keyword: newToken(RETURN, "return", nil, 1),
+				value:   literalExpr{42.0},
+			},
+			initEnv: map[string]any{},
+			wantVal: 42.0,
+			wantErr: nil,
+		},
+		{
+			desc: "return_binary_expr",
+			input: returnStmt{
+				keyword: newToken(RETURN, "return", nil, 1),
+				value: binaryExpr{
+					left:     literalExpr{10.0},
+					operator: newTokenNoLiteral(PLUS),
+					right:    literalExpr{5.0},
+				},
+			},
+			initEnv: map[string]any{},
+			wantVal: 15.0,
+			wantErr: nil,
+		},
+		{
+			desc: "return_variable",
+			input: returnStmt{
+				keyword: newToken(RETURN, "return", nil, 1),
+				value:   variableExpr{name: newToken(IDENTIFIER, "x", nil, 1)},
+			},
+			initEnv: map[string]any{"x": "hello"},
+			wantVal: "hello",
+			wantErr: nil,
+		},
+		{
+			desc: "return_nil",
+			input: returnStmt{
+				keyword: newToken(RETURN, "return", nil, 1),
+				value:   literalExpr{nil},
+			},
+			initEnv: map[string]any{},
+			wantVal: nil,
+			wantErr: nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			interpreter := NewInterpreter()
+			for k, v := range tC.initEnv {
+				interpreter.env.define(k, v)
+			}
+
+			err := interpreter.visitReturnStmt(tC.input)
+			if tC.wantErr != nil {
+				assert.EqualError(t, err, tC.wantErr.Error())
+			} else {
+				retErr, ok := err.(*returnValue)
+				assert.True(t, ok)
+				assert.Equal(t, tC.wantVal, retErr.value)
 			}
 		})
 	}
@@ -864,6 +1046,138 @@ func Test_interpretIfStmt(t *testing.T) {
 				val, exists := interpreter.env.values[k]
 				assert.True(t, exists)
 				assert.Equal(t, v, val)
+			}
+		})
+	}
+}
+
+func Test_interpretFunctionStmt(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		input   functionStmt
+		initEnv map[string]any
+		want    any
+		err     error
+	}{
+		{
+			desc: "basic_function_declaration",
+			input: functionStmt{
+				name: newToken(IDENTIFIER, "add", nil, 1),
+				params: []token{
+					newToken(IDENTIFIER, "a", nil, 1),
+					newToken(IDENTIFIER, "b", nil, 1),
+				},
+				body: []stmt{
+					returnStmt{
+						keyword: newToken(RETURN, "return", nil, 1),
+						value: binaryExpr{
+							left:     variableExpr{name: newToken(IDENTIFIER, "a", nil, 1)},
+							operator: newTokenNoLiteral(PLUS),
+							right:    variableExpr{name: newToken(IDENTIFIER, "b", nil, 1)},
+						},
+					},
+				},
+			},
+			initEnv: map[string]any{},
+			want:    nil,
+			err:     nil,
+		},
+		{
+			desc: "empty_function_declaration",
+			input: functionStmt{
+				name:   newToken(IDENTIFIER, "empty", nil, 1),
+				params: []token{},
+				body:   []stmt{},
+			},
+			initEnv: map[string]any{},
+			want:    nil,
+			err:     nil,
+		},
+		{
+			desc: "redefined_function",
+			input: functionStmt{
+				name:   newToken(IDENTIFIER, "existing", nil, 1),
+				params: []token{},
+				body:   []stmt{},
+			},
+			initEnv: map[string]any{
+				"existing": "some_value",
+			},
+			want: nil,
+			err:  nil,
+		},
+		{
+			desc: "fibonacci_function",
+			input: functionStmt{
+				name: newToken(IDENTIFIER, "fib", nil, 1),
+				params: []token{
+					newToken(IDENTIFIER, "n", nil, 1),
+				},
+				body: []stmt{
+					ifStmt{
+						condition: binaryExpr{
+							left:     variableExpr{name: newToken(IDENTIFIER, "n", nil, 1)},
+							operator: newTokenNoLiteral(LESS_EQUAL),
+							right:    literalExpr{1.0},
+						},
+						thenBranch: returnStmt{
+							keyword: newToken(RETURN, "return", nil, 1),
+							value:   variableExpr{name: newToken(IDENTIFIER, "n", nil, 1)},
+						},
+					},
+					returnStmt{
+						keyword: newToken(RETURN, "return", nil, 1),
+						value: binaryExpr{
+							left: callExpr{
+								callee: variableExpr{name: newToken(IDENTIFIER, "fib", nil, 1)},
+								paren:  newToken(RIGHT_PAREN, ")", nil, 1),
+								arguments: []expr{
+									binaryExpr{
+										left:     variableExpr{name: newToken(IDENTIFIER, "n", nil, 1)},
+										operator: newTokenNoLiteral(MINUS),
+										right:    literalExpr{2.0},
+									},
+								},
+							},
+							operator: newTokenNoLiteral(PLUS),
+							right: callExpr{
+								callee: variableExpr{name: newToken(IDENTIFIER, "fib", nil, 1)},
+								paren:  newToken(RIGHT_PAREN, ")", nil, 1),
+								arguments: []expr{
+									binaryExpr{
+										left:     variableExpr{name: newToken(IDENTIFIER, "n", nil, 1)},
+										operator: newTokenNoLiteral(MINUS),
+										right:    literalExpr{1.0},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			initEnv: map[string]any{},
+			want:    nil,
+			err:     nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			interpreter := NewInterpreter()
+			for k, v := range tC.initEnv {
+				interpreter.env.define(k, v)
+			}
+
+			err := interpreter.visitFunctionStmt(tC.input)
+			if tC.err != nil {
+				assert.EqualError(t, err, tC.err.Error())
+			} else {
+				assert.NoError(t, err)
+				// Verify function was defined in environment
+				val, exists := interpreter.env.values[tC.input.name.lexeme]
+				assert.True(t, exists)
+				_, ok := val.(function)
+				assert.True(t, ok)
 			}
 		})
 	}

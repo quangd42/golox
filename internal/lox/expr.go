@@ -8,6 +8,7 @@ type expr interface {
 
 type exprVisitor interface {
 	visitBinaryExpr(e binaryExpr) (any, error)
+	visitCallExpr(e callExpr) (any, error)
 	visitGroupingExpr(e groupingExpr) (any, error)
 	visitLiteralExpr(e literalExpr) (any, error)
 	visitLogicalExpr(e logicalExpr) (any, error)
@@ -24,6 +25,16 @@ type binaryExpr struct {
 
 func (e binaryExpr) accept(v exprVisitor) (any, error) {
 	return v.visitBinaryExpr(e)
+}
+
+type callExpr struct {
+	callee    expr
+	paren     token
+	arguments []expr
+}
+
+func (e callExpr) accept(v exprVisitor) (any, error) {
+	return v.visitCallExpr(e)
 }
 
 type groupingExpr struct {
