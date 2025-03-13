@@ -2,4 +2,10 @@ fn add(a, b) {
 	return a + b;
 }
 
-print add(1, "twenty two");
+print add("twenty ", 1);
+
+fn minus(a, b) {
+	return a - b;
+}
+
+print minus("twenty", 2);
