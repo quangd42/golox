@@ -3,6 +3,7 @@ package lox
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 )
 
@@ -52,7 +53,7 @@ func (i Interpreter) visitUnaryExpr(e unaryExpr) (any, error) {
 	case BANG:
 		return !i.isTruthy(val), nil
 	default:
-		return nil, NewRuntimeError(e.operator, "Undefined Unary Operator.")
+		return nil, NewRuntimeError(e.operator, "Undefined unary operator.")
 	}
 }
 
@@ -133,20 +134,51 @@ func (i Interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
 	case EQUAL_EQUAL:
 		return left == right, nil
 	default:
-		return nil, NewRuntimeError(e.operator, "Undefined Binary Operator.")
+		return nil, NewRuntimeError(e.operator, "Undefined binary operator.")
 	}
 }
 
 func (i Interpreter) assertNumber(val any) (float64, error) {
-	out, ok := val.(float64)
-	if ok {
-		return out, nil
+	switch v := val.(type) {
+	case int:
+		return float64(v), nil
+	case int8:
+		return float64(v), nil
+	case int16:
+		return float64(v), nil
+	case int32:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case uint:
+		return float64(v), nil
+	case uint8:
+		return float64(v), nil
+	case uint16:
+		return float64(v), nil
+	case uint32:
+		return float64(v), nil
+	case uint64:
+		return float64(v), nil
+	case float32:
+		return float64(v), nil
+	case float64:
+		return v, nil
+	default:
+		return 0, errors.New("NaN")
 	}
-	outInt, ok := val.(int)
+}
+
+func (i Interpreter) assertString(val any) (string, error) {
+	strVal, ok := val.(string)
 	if ok {
-		return float64(outInt), nil
+		return strVal, nil
 	}
-	return 0, errors.New("NaN")
+	numVal, err := i.assertNumber(val)
+	if err == nil {
+		return strconv.FormatFloat(numVal, 'g', 'g', 64), nil
+	}
+	return "", errors.New("not a string")
 }
 
 func (i Interpreter) assertNumberOperands(operator token, left, right any) (leftNum, rightNum float64, err error) {
@@ -164,12 +196,12 @@ func (i Interpreter) assertNumberOperands(operator token, left, right any) (left
 
 func (i Interpreter) assertStringOperands(operator token, left, right any) (leftStr, rightStr string, err error) {
 	err = NewRuntimeError(operator, "Operands must be strings.")
-	leftStr, ok := left.(string)
-	if !ok {
+	leftStr, sErr := i.assertString(left)
+	if sErr != nil {
 		return "", "", err
 	}
-	rightStr, ok = right.(string)
-	if !ok {
+	rightStr, sErr = i.assertString(right)
+	if sErr != nil {
 		return "", "", err
 	}
 	return leftStr, rightStr, nil
@@ -344,6 +376,6 @@ func defineClockFn(env *environment) {
 		callFn: func(i Interpreter, args []any) (any, error) {
 			return time.Now().Unix(), nil
 		},
-		stringFn: func() string { return "<native fn>" },
+		stringFn: func() string { return "<native fn clock>" },
 	})
 }
