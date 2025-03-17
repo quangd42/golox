@@ -1,10 +1,15 @@
-print "for PLUS";
-for var i = 0; i < 20; i = i + 1 {
-  print i;
+print "for STAR";
+for var i = 1; i < 1000; i = i * 2 {
+	print i;
+}
+
+print "for DIVIDE";
+for var i = 64.0; i >= 0.02; i = i / 2 {
+	print i;
 }
 
 print "";
-print "for DIVIDE";
-for var i = 64.0; i >= 0.02; i = i / 2 {
+print "for PLUS";
+for var i = 0; i < 20; i = i + 1 {
 	print i;
 }

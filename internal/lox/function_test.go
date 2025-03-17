@@ -74,7 +74,7 @@ func Test_function_call(t *testing.T) {
 						exprStmt{
 							expr: binaryExpr{
 								left:     literalExpr{value: 1},
-								operator: newTokenNoLiteral(PLUS),
+								operator: newTokenNoLiteral(MINUS),
 								right:    literalExpr{value: "string"}, // Invalid operation
 							},
 						},
@@ -84,14 +84,14 @@ func Test_function_call(t *testing.T) {
 			args:    []any{},
 			want:    nil,
 			wantErr: true,
-			err:     RuntimeError{Token: newToken(IDENTIFIER, "test", "test", 0), Msg: "Operand must be a number."},
+			err:     NewRuntimeError(newToken(IDENTIFIER, "test", "test", 0), "Operand must be a number."),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			interpreter := NewInterpreter()
-			got, err := tt.fn.call(*interpreter, tt.args)
+			got, err := tt.fn.call(interpreter, tt.args)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("function.call() error = %v, wantErr %v", err, tt.wantErr)

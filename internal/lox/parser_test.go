@@ -1627,25 +1627,6 @@ func Test_forStatement(t *testing.T) {
 			},
 		},
 		{
-			desc: "empty_for_loop",
-			input: []token{
-				newTokenNoLiteral(FOR),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
-			want: whileStmt{
-				condition: literalExpr{true},
-				body: blockStmt{
-					statements: []stmt{
-						printStmt{expr: literalExpr{true}},
-					},
-				},
-			},
-		},
-		{
 			desc: "for_loop_with_var_declaration",
 			input: []token{
 				newTokenNoLiteral(FOR),

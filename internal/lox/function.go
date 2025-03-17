@@ -8,6 +8,7 @@ import (
 type fnType string
 
 const (
+	fnTypeNone     fnType = "none"
 	fnTypeFunction fnType = "function"
 	fnTypeMethod   fnType = "method"
 )
@@ -16,7 +17,7 @@ type function struct {
 	declaration functionStmt
 }
 
-func (f function) call(i Interpreter, args []any) (any, error) {
+func (f function) call(i *Interpreter, args []any) (any, error) {
 	env := NewEnvironment(i.globals)
 	for idx, param := range f.declaration.params {
 		env.define(param.lexeme, args[idx])

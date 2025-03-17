@@ -158,22 +158,12 @@ func (p *Parser) exprStatement() (stmt, error) {
 	return exprStmt{expr: expr}, nil
 }
 
-// forStmt → "for" (( varDecl | exprStmt | ";" ) expression? ";" expression?)? block ;
+// forStmt → "for" ( varDecl | exprStmt | ";" ) expression? ";" expression? block ;
 func (p *Parser) forStatement() (stmt, error) {
 	var err error
 	if _, err := p.consume(FOR, "Expect loop."); err != nil {
 		return nil, err
 	}
-	var cond expr
-	if p.match(LEFT_BRACE) {
-		cond = literalExpr{true}
-		bodyStmts, err := p.block()
-		if err != nil {
-			return nil, err
-		}
-		return whileStmt{condition: cond, body: blockStmt{bodyStmts}}, nil
-	}
-
 	var initializer stmt
 	if p.match(VAR) {
 		initializer, err = p.varDecl()
@@ -186,6 +176,7 @@ func (p *Parser) forStatement() (stmt, error) {
 		return nil, err
 	}
 
+	var cond expr
 	if !p.match(SEMICOLON) {
 		cond, err = p.expression()
 		if err != nil {
@@ -644,18 +635,18 @@ func (p *Parser) advance() (token, error) {
 }
 
 // match peeks at the current token to see if it is one of the expected tokens
-func (p Parser) match(expected ...tokenType) bool {
+func (p *Parser) match(expected ...tokenType) bool {
 	return slices.Contains(expected, p.peek().tokenType)
 }
 
 // isAtEnd returns whether there is more token to parse
-func (p Parser) isAtEnd() bool {
+func (p *Parser) isAtEnd() bool {
 	return p.peek().tokenType == EOF
 }
 
 // peek returns the current token without consuming it. Returns the last token
 // if there is no more token to peek at
-func (p Parser) peek() token {
+func (p *Parser) peek() token {
 	if p.current >= len(p.tokens) {
 		return p.tokens[len(p.tokens)-1]
 	}

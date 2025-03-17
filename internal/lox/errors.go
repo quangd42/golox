@@ -10,7 +10,7 @@ type BaseError struct {
 	Where string
 }
 
-func (e BaseError) Error() string {
+func (e *BaseError) Error() string {
 	if e.Where == "" {
 		return fmt.Sprintf("[line %d] Error: %s", e.Line, e.Msg)
 	}
@@ -18,7 +18,7 @@ func (e BaseError) Error() string {
 }
 
 func NewBaseError(line int, where, msg string) error {
-	return BaseError{
+	return &BaseError{
 		Line:  line,
 		Msg:   msg,
 		Where: where,
@@ -42,7 +42,7 @@ type ParseError struct {
 	Msg   string
 }
 
-func (e ParseError) Error() string {
+func (e *ParseError) Error() string {
 	switch e.Token.tokenType {
 	case EOF:
 		return fmt.Sprintf("[line %d] Error at end: %s", e.Token.line, e.Msg)
@@ -52,7 +52,7 @@ func (e ParseError) Error() string {
 }
 
 func NewParseError(t token, msg string) error {
-	return ParseError{Token: t, Msg: msg}
+	return &ParseError{Token: t, Msg: msg}
 }
 
 type RuntimeError struct {
@@ -60,10 +60,10 @@ type RuntimeError struct {
 	Msg   string
 }
 
-func (e RuntimeError) Error() string {
+func (e *RuntimeError) Error() string {
 	return fmt.Sprintf("%s\n[line %d] at '%s'", e.Msg, e.Token.line, e.Token.lexeme)
 }
 
 func NewRuntimeError(t token, msg string) error {
-	return RuntimeError{Token: t, Msg: msg}
+	return &RuntimeError{Token: t, Msg: msg}
 }

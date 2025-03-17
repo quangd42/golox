@@ -8,21 +8,28 @@ import (
 )
 
 type Interpreter struct {
-	globals *environment
-	env     *environment
+	globals   *environment
+	locals    map[expr]int
+	env       *environment
+	currentFn fnType
 }
 
 func NewInterpreter() *Interpreter {
 	globals := NewGlobalEnvironment()
 	defineClockFn(globals)
-	return &Interpreter{globals: globals, env: globals}
+	return &Interpreter{
+		globals:   globals,
+		locals:    make(map[expr]int, 0),
+		env:       globals,
+		currentFn: fnTypeNone,
+	}
 }
 
-func (i Interpreter) Interpret(stmts []stmt) error {
+func (i *Interpreter) Interpret(stmts []stmt) error {
 	for _, stmt := range stmts {
 		err := i.execute(stmt)
 		if err != nil {
-			// TODO: Log
+			// TODO: Replace this with a logger
 			fmt.Printf("%v\n", err)
 			return err
 		}
@@ -30,15 +37,27 @@ func (i Interpreter) Interpret(stmts []stmt) error {
 	return nil
 }
 
-func (i Interpreter) evaluate(e expr) (any, error) {
+func (i *Interpreter) resolve(e expr, depth int) {
+	i.locals[e] = depth
+}
+
+func (i *Interpreter) lookUpVariable(name token, e expr) (any, error) {
+	distance, ok := i.locals[e]
+	if !ok {
+		return i.globals.get(name)
+	}
+	return i.env.getAt(distance, name)
+}
+
+func (i *Interpreter) evaluate(e expr) (any, error) {
 	return e.accept(i)
 }
 
-func (i Interpreter) visitLiteralExpr(e literalExpr) (any, error) {
+func (i *Interpreter) visitLiteralExpr(e literalExpr) (any, error) {
 	return e.value, nil
 }
 
-func (i Interpreter) visitUnaryExpr(e unaryExpr) (any, error) {
+func (i *Interpreter) visitUnaryExpr(e unaryExpr) (any, error) {
 	val, err := i.evaluate(e.right)
 	if err != nil {
 		return nil, err
@@ -57,7 +76,7 @@ func (i Interpreter) visitUnaryExpr(e unaryExpr) (any, error) {
 	}
 }
 
-func (i Interpreter) isTruthy(val any) bool {
+func (i *Interpreter) isTruthy(val any) bool {
 	if val == nil {
 		return false
 	}
@@ -67,7 +86,7 @@ func (i Interpreter) isTruthy(val any) bool {
 	return true
 }
 
-func (i Interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
+func (i *Interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
 	left, err := i.evaluate(e.left)
 	if err != nil {
 		return nil, err
@@ -138,7 +157,7 @@ func (i Interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
 	}
 }
 
-func (i Interpreter) assertNumber(val any) (float64, error) {
+func (i *Interpreter) assertNumber(val any) (float64, error) {
 	switch v := val.(type) {
 	case int:
 		return float64(v), nil
@@ -169,7 +188,7 @@ func (i Interpreter) assertNumber(val any) (float64, error) {
 	}
 }
 
-func (i Interpreter) assertString(val any) (string, error) {
+func (i *Interpreter) assertString(val any) (string, error) {
 	strVal, ok := val.(string)
 	if ok {
 		return strVal, nil
@@ -181,7 +200,7 @@ func (i Interpreter) assertString(val any) (string, error) {
 	return "", errors.New("not a string")
 }
 
-func (i Interpreter) assertNumberOperands(operator token, left, right any) (leftNum, rightNum float64, err error) {
+func (i *Interpreter) assertNumberOperands(operator token, left, right any) (leftNum, rightNum float64, err error) {
 	err = NewRuntimeError(operator, "Operands must be numbers.")
 	leftNum, nErr := i.assertNumber(left)
 	if nErr != nil {
@@ -194,7 +213,7 @@ func (i Interpreter) assertNumberOperands(operator token, left, right any) (left
 	return leftNum, rightNum, nil
 }
 
-func (i Interpreter) assertStringOperands(operator token, left, right any) (leftStr, rightStr string, err error) {
+func (i *Interpreter) assertStringOperands(operator token, left, right any) (leftStr, rightStr string, err error) {
 	err = NewRuntimeError(operator, "Operands must be strings.")
 	leftStr, sErr := i.assertString(left)
 	if sErr != nil {
@@ -207,27 +226,33 @@ func (i Interpreter) assertStringOperands(operator token, left, right any) (left
 	return leftStr, rightStr, nil
 }
 
-func (i Interpreter) visitGroupingExpr(e groupingExpr) (any, error) {
+func (i *Interpreter) visitGroupingExpr(e groupingExpr) (any, error) {
 	return i.evaluate(e.expr)
 }
 
-func (i Interpreter) visitVariableExpr(e variableExpr) (any, error) {
-	return i.env.get(e.name)
+func (i *Interpreter) visitVariableExpr(e variableExpr) (any, error) {
+	// return i.env.get(e.name)
+	return i.lookUpVariable(e.name, e)
 }
 
-func (i Interpreter) visitAssignExpr(e assignExpr) (any, error) {
+func (i *Interpreter) visitAssignExpr(e assignExpr) (any, error) {
 	val, err := i.evaluate(e.value)
 	if err != nil {
 		return nil, err
 	}
-	err = i.env.assign(e.name, val)
+	distance, ok := i.locals[e]
+	if ok {
+		err = i.env.assignAt(distance, e.name, val)
+	} else {
+		err = i.globals.assign(e.name, val)
+	}
 	if err != nil {
 		return nil, err
 	}
 	return val, nil
 }
 
-func (i Interpreter) visitLogicalExpr(e logicalExpr) (any, error) {
+func (i *Interpreter) visitLogicalExpr(e logicalExpr) (any, error) {
 	leftVal, err := i.evaluate(e.left)
 	if err != nil {
 		return nil, err
@@ -244,7 +269,7 @@ func (i Interpreter) visitLogicalExpr(e logicalExpr) (any, error) {
 	return i.evaluate(e.right)
 }
 
-func (i Interpreter) visitCallExpr(e callExpr) (any, error) {
+func (i *Interpreter) visitCallExpr(e callExpr) (any, error) {
 	callee, err := i.evaluate(e.callee)
 	if err != nil {
 		return nil, err
@@ -302,7 +327,7 @@ func (i *Interpreter) visitVarStmt(s varStmt) error {
 	return nil
 }
 
-func (i Interpreter) visitExprStmt(s exprStmt) error {
+func (i *Interpreter) visitExprStmt(s exprStmt) error {
 	_, err := i.evaluate(s.expr)
 	if err != nil {
 		return err
@@ -315,7 +340,7 @@ func (i *Interpreter) visitFunctionStmt(s functionStmt) error {
 	return nil
 }
 
-func (i Interpreter) visitIfStmt(s ifStmt) error {
+func (i *Interpreter) visitIfStmt(s ifStmt) error {
 	condition, err := i.evaluate(s.condition)
 	if err != nil {
 		return err
@@ -328,7 +353,7 @@ func (i Interpreter) visitIfStmt(s ifStmt) error {
 	return nil
 }
 
-func (i Interpreter) visitPrintStmt(s printStmt) error {
+func (i *Interpreter) visitPrintStmt(s printStmt) error {
 	val, err := i.evaluate(s.expr)
 	if err != nil {
 		return err
@@ -338,7 +363,7 @@ func (i Interpreter) visitPrintStmt(s printStmt) error {
 }
 
 // Use error to exit execution early
-func (i Interpreter) visitReturnStmt(s returnStmt) error {
+func (i *Interpreter) visitReturnStmt(s returnStmt) error {
 	var val any
 	var err error
 	if s.value != nil {
@@ -350,7 +375,7 @@ func (i Interpreter) visitReturnStmt(s returnStmt) error {
 	return &returnValue{value: val}
 }
 
-func (i Interpreter) visitWhileStmt(s whileStmt) error {
+func (i *Interpreter) visitWhileStmt(s whileStmt) error {
 	for {
 		condVal, err := i.evaluate(s.condition)
 		if err != nil {
@@ -373,7 +398,7 @@ func (i *Interpreter) visitBlockStmt(s blockStmt) error {
 func defineClockFn(env *environment) {
 	env.define("clock", nativeFn{
 		arityFn: func() int { return 0 },
-		callFn: func(i Interpreter, args []any) (any, error) {
+		callFn: func(i *Interpreter, args []any) (any, error) {
 			return time.Now().Unix(), nil
 		},
 		stringFn: func() string { return "<native fn clock>" },

@@ -16,15 +16,19 @@ func main() {
 		os.Exit(64)
 	}
 
+	// TODO: add logger for errors -> pass to scanner, parser, interpreter
+	// Logger should support debug mode: system errors are only seen in debug.
+
 	interpreter := lox.NewInterpreter()
+	resolver := lox.NewResolver(interpreter)
 	if len(os.Args) == 2 {
-		runFile(interpreter, os.Args[1])
+		runFile(interpreter, resolver, os.Args[1])
 	} else {
-		runPrompt(interpreter)
+		runPrompt(interpreter, resolver)
 	}
 }
 
-func runFile(i *lox.Interpreter, filename string) {
+func runFile(i *lox.Interpreter, r *lox.Resolver, filename string) {
 	f, err := os.Open(filename)
 	if err != nil {
 		fmt.Printf("can't open file '%s': %v\n", filename, err)
@@ -37,7 +41,7 @@ func runFile(i *lox.Interpreter, filename string) {
 		os.Exit(2)
 	}
 
-	err = run(i, b)
+	err = run(i, r, b)
 	if err != nil {
 		var rtErr *lox.RuntimeError
 		if errors.As(err, &rtErr) {
@@ -47,9 +51,9 @@ func runFile(i *lox.Interpreter, filename string) {
 	}
 }
 
-func runPrompt(i *lox.Interpreter) {
+func runPrompt(i *lox.Interpreter, r *lox.Resolver) {
 	var stdout io.Writer = os.Stdout
-	fmt.Fprint(stdout, "Golox 0.01\nType \"help\" or something\n")
+	fmt.Fprint(stdout, "Golox 0.02\n")
 	for {
 		fmt.Fprint(stdout, ">> ")
 
@@ -67,11 +71,11 @@ func runPrompt(i *lox.Interpreter) {
 
 		// Remove delim \n from input before running
 		// If there is any error just continue, error will be reported somewhere else
-		run(i, input[:len(input)-1])
+		run(i, r, input[:len(input)-1])
 	}
 }
 
-func run(i *lox.Interpreter, source []byte) error {
+func run(i *lox.Interpreter, r *lox.Resolver, source []byte) error {
 	scanner := lox.NewScanner(source)
 	tokens, err := scanner.ScanTokens()
 	if err != nil {
@@ -79,6 +83,12 @@ func run(i *lox.Interpreter, source []byte) error {
 	}
 	parser := lox.NewParser(tokens)
 	stmts, err := parser.Parse()
+	// __AUTO_GENERATED_PRINT_VAR_START__
+	fmt.Println(fmt.Sprintf("run stmts: %#v", stmts)) // __AUTO_GENERATED_PRINT_VAR_END__
+	if err != nil {
+		return err
+	}
+	err = r.Resolve(stmts)
 	if err != nil {
 		return err
 	}

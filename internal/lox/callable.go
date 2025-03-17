@@ -1,13 +1,13 @@
 package lox
 
 type callable interface {
-	call(i Interpreter, args []any) (any, error)
+	call(i *Interpreter, args []any) (any, error)
 	arity() int
 }
 
 type nativeFn struct {
 	arityFn  func() int
-	callFn   func(i Interpreter, args []any) (any, error)
+	callFn   func(i *Interpreter, args []any) (any, error)
 	stringFn func() string
 }
 
@@ -15,7 +15,7 @@ func (f nativeFn) arity() int {
 	return f.arityFn()
 }
 
-func (f nativeFn) call(i Interpreter, args []any) (any, error) {
+func (f nativeFn) call(i *Interpreter, args []any) (any, error) {
 	return f.callFn(i, args)
 }
 
