@@ -25,12 +25,12 @@ func Test_scanToken(t *testing.T) {
 		{
 			desc:  "One_Char__LEFT_PAREN",
 			input: []byte("("),
-			want:  []token{newToken(LEFT_PAREN, "(", nil, 1, 0)},
+			want:  []token{newToken(LEFT_PAREN, "(", "(", 1, 0)},
 		},
 		{
 			desc:  "Two_Char__BANG_EQUAL",
 			input: []byte("!="),
-			want:  []token{newToken(BANG_EQUAL, "!=", nil, 1, 0)},
+			want:  []token{newToken(BANG_EQUAL, "!=", "!=", 1, 0)},
 		},
 		{
 			desc:  "Comment",
@@ -60,12 +60,12 @@ func Test_scanToken(t *testing.T) {
 		{
 			desc:  "Identifier_Keyword",
 			input: []byte("var"),
-			want:  []token{newToken(VAR, "var", nil, 1, 0)},
+			want:  []token{newToken(VAR, "var", "var", 1, 0)},
 		},
 		{
 			desc:  "Identifier__User_Defined",
 			input: []byte("golox"),
-			want:  []token{newToken(IDENTIFIER, "golox", nil, 1, 0)},
+			want:  []token{newToken(IDENTIFIER, "golox", "golox", 1, 0)},
 		},
 	}
 	for _, tC := range testCases {
@@ -90,16 +90,16 @@ func TestScanTokens(t *testing.T) {
 			desc:  "sample text",
 			input: []byte(text),
 			want: []token{
-				newToken(LEFT_PAREN, "(", nil, 1, 0),
-				newToken(RIGHT_PAREN, ")", nil, 1, 1),
-				newToken(LESS, "<", nil, 1, 3),
-				newToken(GREATER, ">", nil, 1, 4),
-				newToken(GREATER_EQUAL, ">=", nil, 1, 6),
+				newToken(LEFT_PAREN, "(", "(", 1, 0),
+				newToken(RIGHT_PAREN, ")", ")", 1, 1),
+				newToken(LESS, "<", "<", 1, 3),
+				newToken(GREATER, ">", ">", 1, 4),
+				newToken(GREATER_EQUAL, ">=", ">=", 1, 6),
 
-				newToken(LESS_EQUAL, "<=", nil, 4, 50),
-				newToken(BANG_EQUAL, "!=", nil, 4, 53),
-				newToken(BANG, "!", nil, 4, 56),
-				newToken(EQUAL_EQUAL, "==", nil, 4, 58),
+				newToken(LESS_EQUAL, "<=", "<=", 4, 50),
+				newToken(BANG_EQUAL, "!=", "!=", 4, 53),
+				newToken(BANG, "!", "!", 4, 56),
+				newToken(EQUAL_EQUAL, "==", "==", 4, 58),
 
 				newToken(STRING, "\"This is some string\"", "This is some string", 5, 61),
 
@@ -107,16 +107,16 @@ func TestScanTokens(t *testing.T) {
 				newToken(STRING, "\"some more string\"", "some more string", 6, 87),
 				newToken(NUMBER, "156", 156, 6, 106),
 
-				newToken(THIS, "this", nil, 7, 110),
-				newToken(AND, "and", nil, 7, 115),
-				newToken(IDENTIFIER, "that", nil, 7, 119),
-				newToken(OR, "or", nil, 7, 124),
-				newToken(IDENTIFIER, "never", nil, 7, 127),
-				newToken(FALSE, "false", nil, 7, 133),
-				newToken(TRUE, "true", nil, 7, 139),
+				newToken(THIS, "this", "this", 7, 110),
+				newToken(AND, "and", "and", 7, 115),
+				newToken(IDENTIFIER, "that", "that", 7, 119),
+				newToken(OR, "or", "or", 7, 124),
+				newToken(IDENTIFIER, "never", "never", 7, 127),
+				newToken(FALSE, "false", "false", 7, 133),
+				newToken(TRUE, "true", "true", 7, 139),
 
-				newToken(RETURN, "return", nil, 8, 144),
-				newToken(IDENTIFIER, "out", nil, 8, 151),
+				newToken(RETURN, "return", "return", 8, 144),
+				newToken(IDENTIFIER, "out", "out", 8, 151),
 
 				newToken(EOF, "", nil, 9, 155),
 			},

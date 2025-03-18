@@ -52,54 +52,54 @@ func (s *Scanner) scanToken() error {
 	switch char {
 	// Single-character tokens.
 	case '(':
-		s.addToken(LEFT_PAREN, nil)
+		s.addToken(LEFT_PAREN, "(")
 	case ')':
-		s.addToken(RIGHT_PAREN, nil)
+		s.addToken(RIGHT_PAREN, ")")
 	case '{':
-		s.addToken(LEFT_BRACE, nil)
+		s.addToken(LEFT_BRACE, "{")
 	case '}':
-		s.addToken(RIGHT_BRACE, nil)
+		s.addToken(RIGHT_BRACE, "}")
 	case ',':
-		s.addToken(COMMA, nil)
+		s.addToken(COMMA, ",")
 	case ':':
-		s.addToken(COLON, nil)
+		s.addToken(COLON, ":")
 	case '.':
-		s.addToken(DOT, nil)
+		s.addToken(DOT, ".")
 	case '-':
-		s.addToken(MINUS, nil)
+		s.addToken(MINUS, "-")
 	case '+':
-		s.addToken(PLUS, nil)
+		s.addToken(PLUS, "+")
 	case '?':
-		s.addToken(QUESTION, nil)
+		s.addToken(QUESTION, "?")
 	case ';':
-		s.addToken(SEMICOLON, nil)
+		s.addToken(SEMICOLON, ";")
 	case '*':
-		s.addToken(STAR, nil)
+		s.addToken(STAR, "*")
 
 	// One or two character tokens.
 	case '!':
 		if s.matchConsume('=') {
-			s.addToken(BANG_EQUAL, nil)
+			s.addToken(BANG_EQUAL, "!=")
 		} else {
-			s.addToken(BANG, nil)
+			s.addToken(BANG, "!")
 		}
 	case '=':
 		if s.matchConsume('=') {
-			s.addToken(EQUAL_EQUAL, nil)
+			s.addToken(EQUAL_EQUAL, "==")
 		} else {
-			s.addToken(EQUAL, nil)
+			s.addToken(EQUAL, "=")
 		}
 	case '>':
 		if s.matchConsume('=') {
-			s.addToken(GREATER_EQUAL, nil)
+			s.addToken(GREATER_EQUAL, ">=")
 		} else {
-			s.addToken(GREATER, nil)
+			s.addToken(GREATER, ">")
 		}
 	case '<':
 		if s.matchConsume('=') {
-			s.addToken(LESS_EQUAL, nil)
+			s.addToken(LESS_EQUAL, "<=")
 		} else {
-			s.addToken(LESS, nil)
+			s.addToken(LESS, "<")
 		}
 
 	case '/':
@@ -113,7 +113,7 @@ func (s *Scanner) scanToken() error {
 				}
 			}
 		} else {
-			s.addToken(SLASH, nil)
+			s.addToken(SLASH, "/")
 		}
 
 	// Ignore some white space
@@ -248,9 +248,9 @@ func (s *Scanner) addTokenIdentifier() error {
 	lex := s.makeLexeme()
 	tt, err := getKeywords(lex)
 	if err != nil {
-		s.addToken(IDENTIFIER, nil)
+		s.addToken(IDENTIFIER, lex)
 	} else {
-		s.addToken(tt, nil)
+		s.addToken(tt, tt.String())
 	}
 	return nil
 }
