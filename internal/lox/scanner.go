@@ -17,7 +17,11 @@ type Scanner struct {
 }
 
 func NewScanner(source []byte) *Scanner {
-	return &Scanner{source: source}
+	return &Scanner{
+		Tokens: make([]token, 0),
+		source: source,
+		line:   1,
+	}
 }
 
 func (s *Scanner) ScanTokens() ([]token, error) {
@@ -29,7 +33,7 @@ func (s *Scanner) ScanTokens() ([]token, error) {
 			fmt.Println(err.Error())
 		}
 	}
-	s.Tokens = append(s.Tokens, newToken(EOF, "", nil, s.line))
+	s.Tokens = append(s.Tokens, newToken(EOF, "", nil, s.line, s.start))
 	// If any syntax error was found, return a "syntax error" so that
 	// main function can stop after scanning.
 	if err != nil {
@@ -151,7 +155,7 @@ func (s *Scanner) advance() rune {
 
 // addToken appends a new token to the scanner's internal tokens
 func (s *Scanner) addToken(t tokenType, literal any) {
-	s.Tokens = append(s.Tokens, newToken(t, s.makeLexeme(), literal, s.line))
+	s.Tokens = append(s.Tokens, newToken(t, s.makeLexeme(), literal, s.line, s.start))
 }
 
 // peek returns the current rune without consuming it

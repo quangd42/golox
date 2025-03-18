@@ -25,47 +25,47 @@ func Test_scanToken(t *testing.T) {
 		{
 			desc:  "One_Char__LEFT_PAREN",
 			input: []byte("("),
-			want:  []token{newToken(LEFT_PAREN, "(", nil, 0)},
+			want:  []token{newToken(LEFT_PAREN, "(", nil, 1, 0)},
 		},
 		{
 			desc:  "Two_Char__BANG_EQUAL",
 			input: []byte("!="),
-			want:  []token{newToken(BANG_EQUAL, "!=", nil, 0)},
+			want:  []token{newToken(BANG_EQUAL, "!=", nil, 1, 0)},
 		},
 		{
 			desc:  "Comment",
 			input: []byte("// This is some comment text"),
-			want:  nil, // Comment is ignored
+			want:  []token{}, // Comment is ignored
 		},
 		{
 			desc:  "New_line_String",
 			input: []byte("\n"),
-			want:  nil,
+			want:  []token{},
 		},
 		{
 			desc:  "String",
 			input: []byte("\"This is some string\""),
-			want:  []token{newToken(STRING, "\"This is some string\"", "This is some string", 0)},
+			want:  []token{newToken(STRING, "\"This is some string\"", "This is some string", 1, 0)},
 		},
 		{
 			desc:  "Number_FLOAT",
 			input: []byte("17.8"),
-			want:  []token{newToken(NUMBER, "17.8", 17.8, 0)},
+			want:  []token{newToken(NUMBER, "17.8", 17.8, 1, 0)},
 		},
 		{
 			desc:  "Number_INT",
 			input: []byte("178"),
-			want:  []token{newToken(NUMBER, "178", 178, 0)},
+			want:  []token{newToken(NUMBER, "178", 178, 1, 0)},
 		},
 		{
 			desc:  "Identifier_Keyword",
 			input: []byte("var"),
-			want:  []token{newToken(VAR, "var", nil, 0)},
+			want:  []token{newToken(VAR, "var", nil, 1, 0)},
 		},
 		{
 			desc:  "Identifier__User_Defined",
 			input: []byte("golox"),
-			want:  []token{newToken(IDENTIFIER, "golox", nil, 0)},
+			want:  []token{newToken(IDENTIFIER, "golox", nil, 1, 0)},
 		},
 	}
 	for _, tC := range testCases {
@@ -90,14 +90,35 @@ func TestScanTokens(t *testing.T) {
 			desc:  "sample text",
 			input: []byte(text),
 			want: []token{
-				newToken(LEFT_PAREN, "(", nil, 0), newToken(RIGHT_PAREN, ")", nil, 0),
-				newToken(LESS, "<", nil, 0), newToken(GREATER, ">", nil, 0), newToken(GREATER_EQUAL, ">=", nil, 0), newToken(LESS_EQUAL, "<=", nil, 3),
-				newToken(BANG_EQUAL, "!=", nil, 3), newToken(BANG, "!", nil, 3), newToken(EQUAL_EQUAL, "==", nil, 3),
-				newToken(STRING, "\"This is some string\"", "This is some string", 4),
-				newToken(NUMBER, "23.", 23., 5), newToken(STRING, "\"some more string\"", "some more string", 5), newToken(NUMBER, "156", 156, 5),
-				newToken(THIS, "this", nil, 6), newToken(AND, "and", nil, 6), newToken(IDENTIFIER, "that", nil, 6),
-				newToken(OR, "or", nil, 6), newToken(IDENTIFIER, "never", nil, 6), newToken(FALSE, "false", nil, 6), newToken(TRUE, "true", nil, 6),
-				newToken(RETURN, "return", nil, 7), newToken(IDENTIFIER, "out", nil, 7), newToken(EOF, "", nil, 8),
+				newToken(LEFT_PAREN, "(", nil, 1, 0),
+				newToken(RIGHT_PAREN, ")", nil, 1, 1),
+				newToken(LESS, "<", nil, 1, 3),
+				newToken(GREATER, ">", nil, 1, 4),
+				newToken(GREATER_EQUAL, ">=", nil, 1, 6),
+
+				newToken(LESS_EQUAL, "<=", nil, 4, 50),
+				newToken(BANG_EQUAL, "!=", nil, 4, 53),
+				newToken(BANG, "!", nil, 4, 56),
+				newToken(EQUAL_EQUAL, "==", nil, 4, 58),
+
+				newToken(STRING, "\"This is some string\"", "This is some string", 5, 61),
+
+				newToken(NUMBER, "23.", 23., 6, 83),
+				newToken(STRING, "\"some more string\"", "some more string", 6, 87),
+				newToken(NUMBER, "156", 156, 6, 106),
+
+				newToken(THIS, "this", nil, 7, 110),
+				newToken(AND, "and", nil, 7, 115),
+				newToken(IDENTIFIER, "that", nil, 7, 119),
+				newToken(OR, "or", nil, 7, 124),
+				newToken(IDENTIFIER, "never", nil, 7, 127),
+				newToken(FALSE, "false", nil, 7, 133),
+				newToken(TRUE, "true", nil, 7, 139),
+
+				newToken(RETURN, "return", nil, 8, 144),
+				newToken(IDENTIFIER, "out", nil, 8, 151),
+
+				newToken(EOF, "", nil, 9, 155),
 			},
 		},
 	}

@@ -3,6 +3,7 @@ package lox
 import (
 	"errors"
 	"fmt"
+	"slices"
 )
 
 type tokenType int
@@ -131,21 +132,23 @@ type token struct {
 	lexeme    string
 	literal   any
 	line      int
+	offset    int
 }
 
-func newToken(tokenType tokenType, lexeme string, literal any, line int) token {
+func newToken(tokenType tokenType, lexeme string, literal any, line, offset int) token {
 	return token{
 		tokenType: tokenType,
 		lexeme:    lexeme,
 		literal:   literal,
 		line:      line,
+		offset:    offset,
 	}
 }
 
 // newTokenNoLiteral is a convenient function to create a token with no literal value
 // this is mostly useful for tests
 func newTokenNoLiteral(tokenType tokenType) token {
-	return newToken(tokenType, tokenType.String(), nil, 0)
+	return newToken(tokenType, tokenType.String(), nil, 0, 0)
 }
 
 func (t token) String() string {
@@ -154,12 +157,7 @@ func (t token) String() string {
 
 // hasType returns whether the tokenType is one of the expected.
 func (t token) hasType(expected ...tokenType) bool {
-	for _, tType := range expected {
-		if t.tokenType == tType {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(expected, t.tokenType)
 }
 
 // getKeywords returns the TokenType if the provided lexeme
