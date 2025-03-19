@@ -145,10 +145,17 @@ func newToken(tokenType tokenType, lexeme string, literal any, line, offset int)
 	}
 }
 
-// newTokenNoLiteral is a convenient function to create a token with no literal value
+// newTokenNoLiteralType is a convenient function to create a token with no literal value
 // this is mostly useful for tests
-func newTokenNoLiteral(tokenType tokenType) token {
-	return newToken(tokenType, tokenType.String(), nil, 0, 0)
+func newTokenNoLiteralType(tokenType tokenType, line, offset int) token {
+	switch tokenType {
+	case IDENTIFIER, STRING, NUMBER:
+		return token{}
+	case EOF:
+		return newToken(tokenType, "", nil, line, offset)
+	default:
+		return newToken(tokenType, tokenType.String(), tokenType.String(), line, offset)
+	}
 }
 
 func (t token) String() string {

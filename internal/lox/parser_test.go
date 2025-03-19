@@ -9,36 +9,33 @@ import (
 func Test_primary(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 	}{
-		{desc: "TRUE", input: []token{newTokenNoLiteral(TRUE)}, want: literalExpr{true}},
-		{desc: "FALSE", input: []token{newTokenNoLiteral(FALSE)}, want: literalExpr{false}},
-		{desc: "NIL", input: []token{newTokenNoLiteral(NIL)}, want: literalExpr{nil}},
-		{desc: "NUMBER_int", input: []token{newToken(NUMBER, "45", 45, 0)}, want: literalExpr{45}},
-		{desc: "NUMBER_float", input: []token{newToken(NUMBER, "49.67", 49.67, 0)}, want: literalExpr{49.67}},
+		{desc: "TRUE", input: "true", want: literalExpr{true}},
+		{desc: "FALSE", input: "false", want: literalExpr{false}},
+		{desc: "NIL", input: "nil", want: literalExpr{nil}},
+		{desc: "NUMBER_int", input: "45", want: literalExpr{45}},
+		{desc: "NUMBER_float", input: "49.67", want: literalExpr{49.67}},
 		{
-			desc: "PAREN", input: []token{
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(RIGHT_PAREN),
-			},
-			want: groupingExpr{literalExpr{true}},
+			desc:  "PAREN",
+			input: "(true)",
+			want:  groupingExpr{literalExpr{true}},
 		},
 		{
-			desc: "PAREN_nested", input: []token{
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(NIL),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(RIGHT_PAREN),
-			},
-			want: groupingExpr{groupingExpr{literalExpr{nil}}},
+			desc:  "PAREN_nested",
+			input: "((nil))",
+			want:  groupingExpr{groupingExpr{literalExpr{nil}}},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.primary()
 			if err != nil {
 				t.Error(err)
@@ -51,28 +48,28 @@ func Test_primary(t *testing.T) {
 func Test_unary(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 	}{
 		{
 			desc:  "BANG",
-			input: []token{newTokenNoLiteral(BANG), newTokenNoLiteral(TRUE)},
-			want:  unaryExpr{operator: newTokenNoLiteral(BANG), right: literalExpr{true}},
+			input: "!true",
+			want:  unaryExpr{operator: newTokenNoLiteralType(BANG, 1, 0), right: literalExpr{true}},
 		},
 		{
 			desc:  "MINUS",
-			input: []token{newTokenNoLiteral(MINUS), newToken(NUMBER, "56.19", 56.19, 0)},
-			want:  unaryExpr{operator: newTokenNoLiteral(MINUS), right: literalExpr{56.19}},
+			input: "-56.19",
+			want:  unaryExpr{operator: newTokenNoLiteralType(MINUS, 1, 0), right: literalExpr{56.19}},
 		},
 		{
 			desc:  "NESTED",
-			input: []token{newTokenNoLiteral(BANG), newTokenNoLiteral(MINUS), newTokenNoLiteral(BANG), newTokenNoLiteral(TRUE)},
+			input: "!-!true",
 			want: unaryExpr{
-				operator: newTokenNoLiteral(BANG),
+				operator: newTokenNoLiteralType(BANG, 1, 0),
 				right: unaryExpr{
-					operator: newTokenNoLiteral(MINUS),
+					operator: newTokenNoLiteralType(MINUS, 1, 1),
 					right: unaryExpr{
-						operator: newTokenNoLiteral(BANG),
+						operator: newTokenNoLiteralType(BANG, 1, 2),
 						right:    literalExpr{true},
 					},
 				},
@@ -81,7 +78,12 @@ func Test_unary(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.unary()
 			if err != nil {
 				t.Error(err)
@@ -94,48 +96,45 @@ func Test_unary(t *testing.T) {
 func Test_factor(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 	}{
 		{
 			desc:  "SLASH",
-			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(SLASH), newToken(NUMBER, "9", 9, 0)},
-			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(SLASH), right: literalExpr{9}},
+			input: "12/9",
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteralType(SLASH, 1, 2), right: literalExpr{9}},
 		},
 		{
 			desc:  "STAR",
-			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(STAR), newToken(NUMBER, "9", 9, 0)},
-			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(STAR), right: literalExpr{9}},
+			input: "12*9",
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteralType(STAR, 1, 2), right: literalExpr{9}},
 		},
 		{
-			desc: "SLASH_STAR_SLASH",
-			input: []token{
-				newToken(NUMBER, "12", 12, 0),
-				newTokenNoLiteral(SLASH),
-				newToken(NUMBER, "9", 9, 0),
-				newTokenNoLiteral(STAR),
-				newToken(NUMBER, "78", 78, 0),
-				newTokenNoLiteral(SLASH),
-				newToken(NUMBER, "6", 6, 0),
-			},
+			desc:  "SLASH_STAR_SLASH",
+			input: "12/9*78/6",
 			want: binaryExpr{
 				left: binaryExpr{
 					left: binaryExpr{
 						left:     literalExpr{12},
-						operator: newTokenNoLiteral(SLASH),
+						operator: newTokenNoLiteralType(SLASH, 1, 2),
 						right:    literalExpr{9},
 					},
-					operator: newTokenNoLiteral(STAR),
+					operator: newTokenNoLiteralType(STAR, 1, 4),
 					right:    literalExpr{78},
 				},
-				operator: newTokenNoLiteral(SLASH),
+				operator: newTokenNoLiteralType(SLASH, 1, 7),
 				right:    literalExpr{6},
 			},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.factor()
 			if err != nil {
 				t.Error(err)
@@ -148,73 +147,62 @@ func Test_factor(t *testing.T) {
 func Test_term(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 	}{
 		{
 			desc:  "MINUS",
-			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(MINUS), newToken(NUMBER, "9", 9, 0)},
-			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(MINUS), right: literalExpr{9}},
+			input: "12-9",
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteralType(MINUS, 1, 2), right: literalExpr{9}},
 		},
 		{
 			desc:  "PLUS",
-			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(PLUS), newToken(NUMBER, "9", 9, 0)},
-			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(PLUS), right: literalExpr{9}},
+			input: "12+9",
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteralType(PLUS, 1, 2), right: literalExpr{9}},
 		},
 		{
-			desc: "MINUS_PLUS_MINUS",
-			input: []token{
-				newToken(NUMBER, "12", 12, 0),
-				newTokenNoLiteral(MINUS),
-				newToken(NUMBER, "9", 9, 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "78", 78, 0),
-				newTokenNoLiteral(MINUS),
-				newToken(NUMBER, "6", 6, 0),
-			},
+			desc:  "MINUS_PLUS_MINUS",
+			input: "12-9+78-6",
 			want: binaryExpr{
 				left: binaryExpr{
 					left: binaryExpr{
 						left:     literalExpr{12},
-						operator: newTokenNoLiteral(MINUS),
+						operator: newTokenNoLiteralType(MINUS, 1, 2),
 						right:    literalExpr{9},
 					},
-					operator: newTokenNoLiteral(PLUS),
+					operator: newTokenNoLiteralType(PLUS, 1, 4),
 					right:    literalExpr{78},
 				},
-				operator: newTokenNoLiteral(MINUS),
+				operator: newTokenNoLiteralType(MINUS, 1, 7),
 				right:    literalExpr{6},
 			},
 		},
 		{
-			desc: "MINUS_STAR_MINUS",
-			input: []token{
-				newToken(NUMBER, "12", 12, 0),
-				newTokenNoLiteral(MINUS),
-				newToken(NUMBER, "9", 9, 0),
-				newTokenNoLiteral(STAR),
-				newToken(NUMBER, "78", 78, 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "6", 6, 0),
-			},
+			desc:  "MINUS_STAR_MINUS",
+			input: "12-9*78+6",
 			want: binaryExpr{
 				left: binaryExpr{
 					left:     literalExpr{12},
-					operator: newTokenNoLiteral(MINUS),
+					operator: newTokenNoLiteralType(MINUS, 1, 2),
 					right: binaryExpr{
 						left:     literalExpr{9},
-						operator: newTokenNoLiteral(STAR),
+						operator: newTokenNoLiteralType(STAR, 1, 4),
 						right:    literalExpr{78},
 					},
 				},
-				operator: newTokenNoLiteral(PLUS),
+				operator: newTokenNoLiteralType(PLUS, 1, 7),
 				right:    literalExpr{6},
 			},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.term()
 			if err != nil {
 				t.Error(err)
@@ -227,58 +215,55 @@ func Test_term(t *testing.T) {
 func Test_comparison(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 	}{
 		{
 			desc:  "GREATER",
-			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(GREATER), newToken(NUMBER, "9", 9, 0)},
-			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(GREATER), right: literalExpr{9}},
+			input: "12>9",
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteralType(GREATER, 1, 2), right: literalExpr{9}},
 		},
 		{
 			desc:  "GREATER_EQUAL",
-			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(GREATER_EQUAL), newToken(NUMBER, "9", 9, 0)},
-			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(GREATER_EQUAL), right: literalExpr{9}},
+			input: "12>=9",
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteralType(GREATER_EQUAL, 1, 2), right: literalExpr{9}},
 		},
 		{
 			desc:  "LESS",
-			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(LESS), newToken(NUMBER, "9", 9, 0)},
-			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(LESS), right: literalExpr{9}},
+			input: "12<9",
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteralType(LESS, 1, 2), right: literalExpr{9}},
 		},
 		{
 			desc:  "LESS_EQUAL",
-			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(LESS_EQUAL), newToken(NUMBER, "9", 9, 0)},
-			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(LESS_EQUAL), right: literalExpr{9}},
+			input: "12<=9",
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteralType(LESS_EQUAL, 1, 2), right: literalExpr{9}},
 		},
 		{
-			desc: "GREATER__LESS__GREATER_EQUAL",
-			input: []token{
-				newToken(NUMBER, "12", 12, 0),
-				newTokenNoLiteral(GREATER),
-				newToken(NUMBER, "9", 9, 0),
-				newTokenNoLiteral(LESS),
-				newToken(NUMBER, "78", 78, 0),
-				newTokenNoLiteral(GREATER_EQUAL),
-				newToken(NUMBER, "6", 6, 0),
-			},
+			desc:  "GREATER__LESS__GREATER_EQUAL",
+			input: "12>9<78>=6",
 			want: binaryExpr{
 				left: binaryExpr{
 					left: binaryExpr{
 						left:     literalExpr{12},
-						operator: newTokenNoLiteral(GREATER),
+						operator: newTokenNoLiteralType(GREATER, 1, 2),
 						right:    literalExpr{9},
 					},
-					operator: newTokenNoLiteral(LESS),
+					operator: newTokenNoLiteralType(LESS, 1, 4),
 					right:    literalExpr{78},
 				},
-				operator: newTokenNoLiteral(GREATER_EQUAL),
+				operator: newTokenNoLiteralType(GREATER_EQUAL, 1, 7),
 				right:    literalExpr{6},
 			},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.comparison()
 			if err != nil {
 				t.Error(err)
@@ -291,48 +276,45 @@ func Test_comparison(t *testing.T) {
 func Test_equality(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 	}{
 		{
 			desc:  "BANG_EQUAL",
-			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(BANG_EQUAL), newToken(NUMBER, "9", 9, 0)},
-			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(BANG_EQUAL), right: literalExpr{9}},
+			input: "12!=9",
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteralType(BANG_EQUAL, 1, 2), right: literalExpr{9}},
 		},
 		{
 			desc:  "EQUAL_EQUAL",
-			input: []token{newToken(NUMBER, "12", 12, 0), newTokenNoLiteral(EQUAL_EQUAL), newToken(NUMBER, "9", 9, 0)},
-			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteral(EQUAL_EQUAL), right: literalExpr{9}},
+			input: "12==9",
+			want:  binaryExpr{left: literalExpr{12}, operator: newTokenNoLiteralType(EQUAL_EQUAL, 1, 2), right: literalExpr{9}},
 		},
 		{
-			desc: "BANG_EQUAL__BANG_EQUAL__EQUAL_EQUAL",
-			input: []token{
-				newToken(NUMBER, "12", 12, 0),
-				newTokenNoLiteral(BANG_EQUAL),
-				newToken(NUMBER, "9", 9, 0),
-				newTokenNoLiteral(BANG_EQUAL),
-				newToken(NUMBER, "78", 78, 0),
-				newTokenNoLiteral(EQUAL_EQUAL),
-				newToken(NUMBER, "6", 6, 0),
-			},
+			desc:  "BANG_EQUAL__BANG_EQUAL__EQUAL_EQUAL",
+			input: "12!=9!=78==6",
 			want: binaryExpr{
 				left: binaryExpr{
 					left: binaryExpr{
 						left:     literalExpr{12},
-						operator: newTokenNoLiteral(BANG_EQUAL),
+						operator: newTokenNoLiteralType(BANG_EQUAL, 1, 2),
 						right:    literalExpr{9},
 					},
-					operator: newTokenNoLiteral(BANG_EQUAL),
+					operator: newTokenNoLiteralType(BANG_EQUAL, 1, 5),
 					right:    literalExpr{78},
 				},
-				operator: newTokenNoLiteral(EQUAL_EQUAL),
+				operator: newTokenNoLiteralType(EQUAL_EQUAL, 1, 9),
 				right:    literalExpr{6},
 			},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.equality()
 			if err != nil {
 				t.Error(err)
@@ -345,122 +327,87 @@ func Test_equality(t *testing.T) {
 func Test_ternary(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 	}{
 		{
-			desc: "Simple_Ternary",
-			input: []token{
-				newToken(NUMBER, "23", 23, 0),
-				newTokenNoLiteral(EQUAL_EQUAL),
-				newToken(NUMBER, "2.3", 2.3, 0),
-				newTokenNoLiteral(QUESTION),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(COLON),
-				newTokenNoLiteral(FALSE),
-			},
+			desc:  "Simple_Ternary",
+			input: "23==2.3?true:false",
 			want: binaryExpr{
 				left: binaryExpr{
-					left:     binaryExpr{left: literalExpr{23}, operator: newTokenNoLiteral(EQUAL_EQUAL), right: literalExpr{2.3}},
-					operator: newTokenNoLiteral(QUESTION),
+					left:     binaryExpr{left: literalExpr{23}, operator: newTokenNoLiteralType(EQUAL_EQUAL, 1, 2), right: literalExpr{2.3}},
+					operator: newTokenNoLiteralType(QUESTION, 1, 7),
 					right:    literalExpr{true},
 				},
-				operator: newTokenNoLiteral(COLON),
+				operator: newTokenNoLiteralType(COLON, 1, 12),
 				right:    literalExpr{false},
 			},
 		},
 		{
-			desc: "Nested_Ternary",
-			input: []token{
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(GREATER),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(QUESTION),
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(QUESTION),
-				newTokenNoLiteral(FALSE),
-				newTokenNoLiteral(COLON),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(COLON),
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(FALSE),
-				newTokenNoLiteral(QUESTION),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(COLON),
-				newTokenNoLiteral(NIL),
-				newTokenNoLiteral(RIGHT_PAREN),
-			},
+			desc:  "Nested_Ternary",
+			input: "10>5?(true?false:true):(false?true:nil)",
 			want: binaryExpr{
 				left: binaryExpr{
-					left:     binaryExpr{left: literalExpr{10}, operator: newTokenNoLiteral(GREATER), right: literalExpr{5}},
-					operator: newTokenNoLiteral(QUESTION),
+					left:     binaryExpr{left: literalExpr{10}, operator: newTokenNoLiteralType(GREATER, 1, 2), right: literalExpr{5}},
+					operator: newTokenNoLiteralType(QUESTION, 1, 4),
 					right: groupingExpr{
 						binaryExpr{
 							left: binaryExpr{
 								left:     literalExpr{true},
-								operator: newTokenNoLiteral(QUESTION),
+								operator: newTokenNoLiteralType(QUESTION, 1, 10),
 								right:    literalExpr{false},
 							},
-							operator: newTokenNoLiteral(COLON),
+							operator: newTokenNoLiteralType(COLON, 1, 16),
 							right:    literalExpr{true},
 						},
 					},
 				},
-				operator: newTokenNoLiteral(COLON),
+				operator: newTokenNoLiteralType(COLON, 1, 22),
 				right: groupingExpr{
 					binaryExpr{
 						left: binaryExpr{
 							left:     literalExpr{false},
-							operator: newTokenNoLiteral(QUESTION),
+							operator: newTokenNoLiteralType(QUESTION, 1, 29),
 							right:    literalExpr{true},
 						},
-						operator: newTokenNoLiteral(COLON),
+						operator: newTokenNoLiteralType(COLON, 1, 34),
 						right:    literalExpr{nil},
 					},
 				},
 			},
 		},
 		{
-			desc: "Complex_Condition_Ternary",
-			input: []token{
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "3", 3, 0),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(LESS),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(QUESTION),
-				newToken(STRING, "yes", "yes", 0),
-				newTokenNoLiteral(COLON),
-				newToken(STRING, "no", "no", 0),
-			},
+			desc:  "Complex_Condition_Ternary",
+			input: "(5+3)<10?\"yes\":\"no\"",
 			want: binaryExpr{
 				left: binaryExpr{
 					left: binaryExpr{
 						left: groupingExpr{
 							binaryExpr{
 								left:     literalExpr{5},
-								operator: newTokenNoLiteral(PLUS),
+								operator: newTokenNoLiteralType(PLUS, 1, 2),
 								right:    literalExpr{3},
 							},
 						},
-						operator: newTokenNoLiteral(LESS),
+						operator: newTokenNoLiteralType(LESS, 1, 5),
 						right:    literalExpr{10},
 					},
-					operator: newTokenNoLiteral(QUESTION),
+					operator: newTokenNoLiteralType(QUESTION, 1, 8),
 					right:    literalExpr{"yes"},
 				},
-				operator: newTokenNoLiteral(COLON),
+				operator: newTokenNoLiteralType(COLON, 1, 14),
 				right:    literalExpr{"no"},
 			},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.ternary()
 			if err != nil {
 				t.Error(err)
@@ -473,54 +420,40 @@ func Test_ternary(t *testing.T) {
 func Test_or(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 	}{
 		{
 			desc:  "simple_or",
-			input: []token{newTokenNoLiteral(TRUE), newTokenNoLiteral(OR), newTokenNoLiteral(FALSE)},
-			want:  logicalExpr{left: literalExpr{true}, operator: newTokenNoLiteral(OR), right: literalExpr{false}},
+			input: "true or false",
+			want:  logicalExpr{left: literalExpr{true}, operator: newTokenNoLiteralType(OR, 1, 5), right: literalExpr{false}},
 		},
 		{
-			desc: "chained_or",
-			input: []token{
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(OR),
-				newTokenNoLiteral(FALSE),
-				newTokenNoLiteral(OR),
-				newTokenNoLiteral(NIL),
-			},
+			desc:  "chained_or",
+			input: "true or false or nil",
 			want: logicalExpr{
 				left: logicalExpr{
 					left:     literalExpr{true},
-					operator: newTokenNoLiteral(OR),
+					operator: newTokenNoLiteralType(OR, 1, 5),
 					right:    literalExpr{false},
 				},
-				operator: newTokenNoLiteral(OR),
+				operator: newTokenNoLiteralType(OR, 1, 14),
 				right:    literalExpr{nil},
 			},
 		},
 		{
-			desc: "or_with_expressions",
-			input: []token{
-				newToken(NUMBER, "1", 1, 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "2", 2, 0),
-				newTokenNoLiteral(OR),
-				newToken(NUMBER, "3", 3, 0),
-				newTokenNoLiteral(STAR),
-				newToken(NUMBER, "4", 4, 0),
-			},
+			desc:  "or_with_expressions",
+			input: "1+2 or 3*4",
 			want: logicalExpr{
 				left: binaryExpr{
 					left:     literalExpr{1},
-					operator: newTokenNoLiteral(PLUS),
+					operator: newTokenNoLiteralType(PLUS, 1, 1),
 					right:    literalExpr{2},
 				},
-				operator: newTokenNoLiteral(OR),
+				operator: newTokenNoLiteralType(OR, 1, 4),
 				right: binaryExpr{
 					left:     literalExpr{3},
-					operator: newTokenNoLiteral(STAR),
+					operator: newTokenNoLiteralType(STAR, 1, 8),
 					right:    literalExpr{4},
 				},
 			},
@@ -528,7 +461,12 @@ func Test_or(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.or()
 			if err != nil {
 				t.Error(err)
@@ -541,54 +479,40 @@ func Test_or(t *testing.T) {
 func Test_and(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 	}{
 		{
 			desc:  "simple_and",
-			input: []token{newTokenNoLiteral(TRUE), newTokenNoLiteral(AND), newTokenNoLiteral(FALSE)},
-			want:  logicalExpr{left: literalExpr{true}, operator: newTokenNoLiteral(AND), right: literalExpr{false}},
+			input: "true and false",
+			want:  logicalExpr{left: literalExpr{true}, operator: newTokenNoLiteralType(AND, 1, 5), right: literalExpr{false}},
 		},
 		{
-			desc: "chained_and",
-			input: []token{
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(AND),
-				newTokenNoLiteral(FALSE),
-				newTokenNoLiteral(AND),
-				newTokenNoLiteral(NIL),
-			},
+			desc:  "chained_and",
+			input: "true and false and nil",
 			want: logicalExpr{
 				left: logicalExpr{
 					left:     literalExpr{true},
-					operator: newTokenNoLiteral(AND),
+					operator: newTokenNoLiteralType(AND, 1, 5),
 					right:    literalExpr{false},
 				},
-				operator: newTokenNoLiteral(AND),
+				operator: newTokenNoLiteralType(AND, 1, 15),
 				right:    literalExpr{nil},
 			},
 		},
 		{
-			desc: "and_with_expressions",
-			input: []token{
-				newToken(NUMBER, "1", 1, 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "2", 2, 0),
-				newTokenNoLiteral(AND),
-				newToken(NUMBER, "3", 3, 0),
-				newTokenNoLiteral(STAR),
-				newToken(NUMBER, "4", 4, 0),
-			},
+			desc:  "and_with_expressions",
+			input: "1+2 and 3*4",
 			want: logicalExpr{
 				left: binaryExpr{
 					left:     literalExpr{1},
-					operator: newTokenNoLiteral(PLUS),
+					operator: newTokenNoLiteralType(PLUS, 1, 1),
 					right:    literalExpr{2},
 				},
-				operator: newTokenNoLiteral(AND),
+				operator: newTokenNoLiteralType(AND, 1, 4),
 				right: binaryExpr{
 					left:     literalExpr{3},
-					operator: newTokenNoLiteral(STAR),
+					operator: newTokenNoLiteralType(STAR, 1, 9),
 					right:    literalExpr{4},
 				},
 			},
@@ -596,7 +520,12 @@ func Test_and(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.and()
 			if err != nil {
 				t.Error(err)
@@ -609,71 +538,56 @@ func Test_and(t *testing.T) {
 func Test_assignment(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 		err   error
 	}{
 		{
-			desc: "simple_assignment",
-			input: []token{
-				newToken(IDENTIFIER, "x", "x", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "42", 42, 0),
-			},
+			desc:  "simple_assignment",
+			input: "x=42",
 			want: assignExpr{
-				name:  newToken(IDENTIFIER, "x", "x", 0),
+				name:  newToken(IDENTIFIER, "x", "x", 1, 0),
 				value: literalExpr{42},
 			},
 		},
 		{
-			desc: "chained_assignment",
-			input: []token{
-				newToken(IDENTIFIER, "x", "x", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(IDENTIFIER, "y", "y", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "42", 42, 0),
-			},
+			desc:  "chained_assignment",
+			input: "x=y=42",
 			want: assignExpr{
-				name: newToken(IDENTIFIER, "x", "x", 0),
+				name: newToken(IDENTIFIER, "x", "x", 1, 0),
 				value: assignExpr{
-					name:  newToken(IDENTIFIER, "y", "y", 0),
+					name:  newToken(IDENTIFIER, "y", "y", 1, 2),
 					value: literalExpr{42},
 				},
 			},
 		},
 		{
-			desc: "assignment_with_expression",
-			input: []token{
-				newToken(IDENTIFIER, "x", "x", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "5", 5, 0),
-			},
+			desc:  "assignment_with_expression",
+			input: "x=10+5",
 			want: assignExpr{
-				name: newToken(IDENTIFIER, "x", "x", 0),
+				name: newToken(IDENTIFIER, "x", "x", 1, 0),
 				value: binaryExpr{
 					left:     literalExpr{10},
-					operator: newTokenNoLiteral(PLUS),
+					operator: newTokenNoLiteralType(PLUS, 1, 4),
 					right:    literalExpr{5},
 				},
 			},
 		},
 		{
-			desc: "invalid_assignment_target",
-			input: []token{
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "10", 10, 0),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(EQUAL), "Invalid assignment target."),
+			desc:  "invalid_assignment_target",
+			input: "42=10",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(EQUAL, 1, 2), "Invalid assignment target."),
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.assignment()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -687,54 +601,36 @@ func Test_assignment(t *testing.T) {
 func Test_call(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 		err   error
 	}{
 		{
-			desc: "simple_call",
-			input: []token{
-				newToken(IDENTIFIER, "print", "print", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(STRING, "hello", "hello", 0),
-				newTokenNoLiteral(RIGHT_PAREN),
-			},
+			desc:  "simple_call",
+			input: "say(\"hello\")",
 			want: callExpr{
-				callee: variableExpr{newToken(IDENTIFIER, "print", "print", 0)},
-				paren:  newTokenNoLiteral(RIGHT_PAREN),
+				callee: variableExpr{newToken(IDENTIFIER, "say", "say", 1, 0)},
+				paren:  newTokenNoLiteralType(RIGHT_PAREN, 1, 11),
 				arguments: []expr{
 					literalExpr{"hello"},
 				},
 			},
 		},
 		{
-			desc: "no_arguments",
-			input: []token{
-				newToken(IDENTIFIER, "clock", "clock", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(RIGHT_PAREN),
-			},
+			desc:  "no_arguments",
+			input: "clock()",
 			want: callExpr{
-				callee:    variableExpr{newToken(IDENTIFIER, "clock", "clock", 0)},
-				paren:     newTokenNoLiteral(RIGHT_PAREN),
+				callee:    variableExpr{newToken(IDENTIFIER, "clock", "clock", 1, 0)},
+				paren:     newTokenNoLiteralType(RIGHT_PAREN, 1, 6),
 				arguments: []expr{},
 			},
 		},
 		{
-			desc: "multiple_arguments",
-			input: []token{
-				newToken(IDENTIFIER, "sum", "sum", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(NUMBER, "1", 1, 0),
-				newTokenNoLiteral(COMMA),
-				newToken(NUMBER, "2", 2, 0),
-				newTokenNoLiteral(COMMA),
-				newToken(NUMBER, "3", 3, 0),
-				newTokenNoLiteral(RIGHT_PAREN),
-			},
+			desc:  "multiple_arguments",
+			input: "sum(1,2,3)",
 			want: callExpr{
-				callee: variableExpr{newToken(IDENTIFIER, "sum", "sum", 0)},
-				paren:  newTokenNoLiteral(RIGHT_PAREN),
+				callee: variableExpr{newToken(IDENTIFIER, "sum", "sum", 1, 0)},
+				paren:  newTokenNoLiteralType(RIGHT_PAREN, 1, 9),
 				arguments: []expr{
 					literalExpr{1},
 					literalExpr{2},
@@ -743,23 +639,15 @@ func Test_call(t *testing.T) {
 			},
 		},
 		{
-			desc: "nested_calls",
-			input: []token{
-				newToken(IDENTIFIER, "outer", "outer", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(IDENTIFIER, "inner", "inner", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(RIGHT_PAREN),
-			},
+			desc:  "nested_calls",
+			input: "outer(inner(42))",
 			want: callExpr{
-				callee: variableExpr{newToken(IDENTIFIER, "outer", "outer", 0)},
-				paren:  newTokenNoLiteral(RIGHT_PAREN),
+				callee: variableExpr{newToken(IDENTIFIER, "outer", "outer", 1, 0)},
+				paren:  newTokenNoLiteralType(RIGHT_PAREN, 1, 15),
 				arguments: []expr{
 					callExpr{
-						callee: variableExpr{newToken(IDENTIFIER, "inner", "inner", 0)},
-						paren:  newTokenNoLiteral(RIGHT_PAREN),
+						callee: variableExpr{newToken(IDENTIFIER, "inner", "inner", 1, 6)},
+						paren:  newTokenNoLiteralType(RIGHT_PAREN, 1, 14),
 						arguments: []expr{
 							literalExpr{42},
 						},
@@ -768,75 +656,57 @@ func Test_call(t *testing.T) {
 			},
 		},
 		{
-			desc: "multiple_consecutive_calls",
-			input: []token{
-				newToken(IDENTIFIER, "first", "first", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(RIGHT_PAREN),
-			},
+			desc:  "multiple_consecutive_calls",
+			input: "first()()()",
 			want: callExpr{
 				callee: callExpr{
 					callee: callExpr{
-						callee:    variableExpr{newToken(IDENTIFIER, "first", "first", 0)},
-						paren:     newTokenNoLiteral(RIGHT_PAREN),
+						callee:    variableExpr{newToken(IDENTIFIER, "first", "first", 1, 0)},
+						paren:     newTokenNoLiteralType(RIGHT_PAREN, 1, 6),
 						arguments: []expr{},
 					},
-					paren:     newTokenNoLiteral(RIGHT_PAREN),
+					paren:     newTokenNoLiteralType(RIGHT_PAREN, 1, 8),
 					arguments: []expr{},
 				},
-				paren:     newTokenNoLiteral(RIGHT_PAREN),
+				paren:     newTokenNoLiteralType(RIGHT_PAREN, 1, 10),
 				arguments: []expr{},
 			},
 		},
 		{
-			desc: "call_with_expressions",
-			input: []token{
-				newToken(IDENTIFIER, "calc", "calc", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(NUMBER, "1", 1, 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "2", 2, 0),
-				newTokenNoLiteral(COMMA),
-				newToken(NUMBER, "3", 3, 0),
-				newTokenNoLiteral(STAR),
-				newToken(NUMBER, "4", 4, 0),
-				newTokenNoLiteral(RIGHT_PAREN),
-			},
+			desc:  "call_with_expressions",
+			input: "calc(1+2,3*4)",
 			want: callExpr{
-				callee: variableExpr{newToken(IDENTIFIER, "calc", "calc", 0)},
-				paren:  newTokenNoLiteral(RIGHT_PAREN),
+				callee: variableExpr{newToken(IDENTIFIER, "calc", "calc", 1, 0)},
+				paren:  newTokenNoLiteralType(RIGHT_PAREN, 1, 12),
 				arguments: []expr{
 					binaryExpr{
 						left:     literalExpr{1},
-						operator: newTokenNoLiteral(PLUS),
+						operator: newTokenNoLiteralType(PLUS, 1, 6),
 						right:    literalExpr{2},
 					},
 					binaryExpr{
 						left:     literalExpr{3},
-						operator: newTokenNoLiteral(STAR),
+						operator: newTokenNoLiteralType(STAR, 1, 10),
 						right:    literalExpr{4},
 					},
 				},
 			},
 		},
 		{
-			desc: "missing_right_paren",
-			input: []token{
-				newToken(IDENTIFIER, "print", "print", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(STRING, "hello", "hello", 0),
-			},
-			want: nil,
-			err:  NewParseError(newToken(STRING, "hello", "hello", 0), "Expect ')' after arguments."),
+			desc:  "missing_right_paren",
+			input: "say(\"hello\"",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(EOF, 1, 11), "Expect ')' after arguments."),
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.call()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -850,145 +720,107 @@ func Test_call(t *testing.T) {
 func Test_expression(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  expr
 		err   error
 	}{
 		{
-			desc: "expr_COMMA_expr_COMMA_expr",
-			input: []token{
-				newToken(NUMBER, "12", 12, 0),
-				newTokenNoLiteral(GREATER),
-				newToken(NUMBER, "9", 9, 0),
-				newTokenNoLiteral(COMMA),
-				newToken(NUMBER, "78", 78, 0),
-				newTokenNoLiteral(GREATER_EQUAL),
-				newToken(NUMBER, "6", 6, 0),
-				newTokenNoLiteral(COMMA),
-				newToken(NUMBER, "13.5", 13.5, 0),
-				newTokenNoLiteral(BANG_EQUAL),
-				newToken(NUMBER, "51.3", 51.3, 0),
-			},
+			desc:  "expr_COMMA_expr_COMMA_expr",
+			input: "12>9,78>=6,13.5!=51.3",
 			want: binaryExpr{
 				left: binaryExpr{
 					left: binaryExpr{
 						left:     literalExpr{12},
-						operator: newTokenNoLiteral(GREATER),
+						operator: newTokenNoLiteralType(GREATER, 1, 2),
 						right:    literalExpr{9},
 					},
-					operator: newTokenNoLiteral(COMMA),
+					operator: newTokenNoLiteralType(COMMA, 1, 4),
 					right: binaryExpr{
 						left:     literalExpr{78},
-						operator: newTokenNoLiteral(GREATER_EQUAL),
+						operator: newTokenNoLiteralType(GREATER_EQUAL, 1, 7),
 						right:    literalExpr{6},
 					},
 				},
-				operator: newTokenNoLiteral(COMMA),
+				operator: newTokenNoLiteralType(COMMA, 1, 10),
 				right: binaryExpr{
 					left:     literalExpr{13.5},
-					operator: newTokenNoLiteral(BANG_EQUAL),
+					operator: newTokenNoLiteralType(BANG_EQUAL, 1, 15),
 					right:    literalExpr{51.3},
 				},
 			},
 		},
 		{
-			desc: "Missing_left_operand_in_binary",
-			input: []token{
-				newTokenNoLiteral(SLASH),
-				newToken(NUMBER, "13.5", 13.5, 0),
-				newTokenNoLiteral(BANG_EQUAL),
-				newToken(NUMBER, "51.3", 51.3, 0),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(SLASH), "Expect left operand."),
+			desc:  "Missing_left_operand_in_binary",
+			input: "/13.5!=51.3",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(SLASH, 1, 0), "Expect left operand."),
 		},
 		{
-			desc: "or_simple",
-			input: []token{
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(OR),
-				newTokenNoLiteral(FALSE),
-			},
+			desc:  "or_simple",
+			input: "true or false",
 			want: logicalExpr{
 				left:     literalExpr{true},
-				operator: newTokenNoLiteral(OR),
+				operator: newTokenNoLiteralType(OR, 1, 5),
 				right:    literalExpr{false},
 			},
 		},
 		{
-			desc: "and_simple",
-			input: []token{
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(AND),
-				newTokenNoLiteral(FALSE),
-			},
+			desc:  "and_simple",
+			input: "true and false",
 			want: logicalExpr{
 				left:     literalExpr{true},
-				operator: newTokenNoLiteral(AND),
+				operator: newTokenNoLiteralType(AND, 1, 5),
 				right:    literalExpr{false},
 			},
 		},
 		{
-			desc: "chained_or",
-			input: []token{
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(OR),
-				newTokenNoLiteral(FALSE),
-				newTokenNoLiteral(OR),
-				newTokenNoLiteral(NIL),
-			},
+			desc:  "chained_or",
+			input: "true or false or nil",
 			want: logicalExpr{
 				left: logicalExpr{
 					left:     literalExpr{true},
-					operator: newTokenNoLiteral(OR),
+					operator: newTokenNoLiteralType(OR, 1, 5),
 					right:    literalExpr{false},
 				},
-				operator: newTokenNoLiteral(OR),
+				operator: newTokenNoLiteralType(OR, 1, 14),
 				right:    literalExpr{nil},
 			},
 		},
 		{
-			desc: "chained_and",
-			input: []token{
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(AND),
-				newTokenNoLiteral(FALSE),
-				newTokenNoLiteral(AND),
-				newTokenNoLiteral(NIL),
-			},
+			desc:  "chained_and",
+			input: "true and false and nil",
 			want: logicalExpr{
 				left: logicalExpr{
 					left:     literalExpr{true},
-					operator: newTokenNoLiteral(AND),
+					operator: newTokenNoLiteralType(AND, 1, 5),
 					right:    literalExpr{false},
 				},
-				operator: newTokenNoLiteral(AND),
+				operator: newTokenNoLiteralType(AND, 1, 15),
 				right:    literalExpr{nil},
 			},
 		},
 		{
-			desc: "mixed_and_or",
-			input: []token{
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(AND),
-				newTokenNoLiteral(FALSE),
-				newTokenNoLiteral(OR),
-				newTokenNoLiteral(NIL),
-			},
+			desc:  "mixed_and_or",
+			input: "true and false or nil",
 			want: logicalExpr{
 				left: logicalExpr{
 					left:     literalExpr{true},
-					operator: newTokenNoLiteral(AND),
+					operator: newTokenNoLiteralType(AND, 1, 5),
 					right:    literalExpr{false},
 				},
-				operator: newTokenNoLiteral(OR),
+				operator: newTokenNoLiteralType(OR, 1, 15),
 				right:    literalExpr{nil},
 			},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.expression()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1001,50 +833,41 @@ func Test_expression(t *testing.T) {
 func Test_printStmt(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  stmt
 		err   error
 	}{
 		{
-			desc: "printStmt_Simple",
-			input: []token{
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(SEMICOLON),
-			},
-			want: printStmt{expr: literalExpr{42}},
+			desc:  "printStmt_Simple",
+			input: "print 42;",
+			want:  printStmt{expr: literalExpr{42}},
 		},
 		{
-			desc: "printStmt_with_binaryExpr",
-			input: []token{
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "8", 8, 0),
-				newTokenNoLiteral(SEMICOLON),
-			},
+			desc:  "printStmt_with_binaryExpr",
+			input: "print 42+8;",
 			want: printStmt{
 				expr: binaryExpr{
 					left:     literalExpr{42},
-					operator: newTokenNoLiteral(PLUS),
+					operator: newTokenNoLiteralType(PLUS, 1, 8),
 					right:    literalExpr{8},
 				},
 			},
 		},
 		{
-			desc: "missing_semicolon",
-			input: []token{
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(EOF),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(EOF), "Expect ';' after expression."),
+			desc:  "missing_semicolon",
+			input: "print 42",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(EOF, 1, 8), "Expect ';' after expression."),
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1058,22 +881,17 @@ func Test_printStmt(t *testing.T) {
 func Test_exprStmt(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  stmt
 		err   error
 	}{
 		{
-			desc: "exprStmt",
-			input: []token{
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "8", 8, 0),
-				newTokenNoLiteral(SEMICOLON),
-			},
+			desc:  "exprStmt",
+			input: "42+8;",
 			want: exprStmt{
 				expr: binaryExpr{
 					left:     literalExpr{42},
-					operator: newTokenNoLiteral(PLUS),
+					operator: newTokenNoLiteralType(PLUS, 1, 2),
 					right:    literalExpr{8},
 				},
 			},
@@ -1081,7 +899,12 @@ func Test_exprStmt(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1095,19 +918,13 @@ func Test_exprStmt(t *testing.T) {
 func Test_blockStmt(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  stmt
 		err   error
 	}{
 		{
-			desc: "simple_block",
-			input: []token{
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "simple_block",
+			input: "{print 42;}",
 			want: blockStmt{
 				statements: []stmt{
 					printStmt{expr: literalExpr{42}},
@@ -1115,27 +932,13 @@ func Test_blockStmt(t *testing.T) {
 			},
 		},
 		{
-			desc: "empty_block",
-			input: []token{
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
-			want: blockStmt{statements: []stmt{}},
+			desc:  "empty_block",
+			input: "{}",
+			want:  blockStmt{statements: []stmt{}},
 		},
 		{
-			desc: "nested_blocks",
-			input: []token{
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "1", 1, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "2", 2, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "nested_blocks",
+			input: "{print 1;{print 2;}}",
 			want: blockStmt{
 				statements: []stmt{
 					printStmt{expr: literalExpr{1}},
@@ -1148,47 +951,35 @@ func Test_blockStmt(t *testing.T) {
 			},
 		},
 		{
-			desc: "block_with_declarations",
-			input: []token{
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(VAR),
-				newToken(IDENTIFIER, "x", "x", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(PRINT),
-				newToken(IDENTIFIER, "x", "x", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "block_with_declarations",
+			input: "{var x = 10;print x;}",
 			want: blockStmt{
 				statements: []stmt{
 					varStmt{
-						name:        newToken(IDENTIFIER, "x", "x", 0),
+						name:        newToken(IDENTIFIER, "x", "x", 1, 5),
 						initializer: literalExpr{10},
 					},
 					printStmt{
-						expr: variableExpr{newToken(IDENTIFIER, "x", "x", 0)},
+						expr: variableExpr{newToken(IDENTIFIER, "x", "x", 1, 18)},
 					},
 				},
 			},
 		},
 		{
-			desc: "missing_right_brace",
-			input: []token{
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(EOF),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(EOF), "Expect '}' after block."),
+			desc:  "missing_right_brace",
+			input: "{print 42;",
+			want:  nil,
+			err:   NewParseError(newToken(EOF, "", nil, 1, 10), "Expect '}' after block."),
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1202,27 +993,17 @@ func Test_blockStmt(t *testing.T) {
 func Test_ifStmt(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  stmt
 		err   error
 	}{
 		{
-			desc: "simple_if_then",
-			input: []token{
-				newTokenNoLiteral(IF),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(GREATER),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "simple_if_then",
+			input: "if 10>5 {print true;}",
 			want: ifStmt{
 				condition: binaryExpr{
 					left:     literalExpr{10},
-					operator: newTokenNoLiteral(GREATER),
+					operator: newTokenNoLiteralType(GREATER, 1, 5),
 					right:    literalExpr{5},
 				},
 				thenBranch: blockStmt{
@@ -1234,28 +1015,12 @@ func Test_ifStmt(t *testing.T) {
 			},
 		},
 		{
-			desc: "simple_if_then_else",
-			input: []token{
-				newTokenNoLiteral(IF),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(GREATER),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-				newTokenNoLiteral(ELSE),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(FALSE),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "simple_if_then_else",
+			input: "if 10>5 {print true;} else {print false;}",
 			want: ifStmt{
 				condition: binaryExpr{
 					left:     literalExpr{10},
-					operator: newTokenNoLiteral(GREATER),
+					operator: newTokenNoLiteralType(GREATER, 1, 5),
 					right:    literalExpr{5},
 				},
 				thenBranch: blockStmt{
@@ -1271,24 +1036,12 @@ func Test_ifStmt(t *testing.T) {
 			},
 		},
 		{
-			desc: "if_with_parentheses",
-			input: []token{
-				newTokenNoLiteral(IF),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(GREATER),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "if_with_parentheses",
+			input: "if (10>5) {print true;}",
 			want: ifStmt{
 				condition: groupingExpr{binaryExpr{
 					left:     literalExpr{10},
-					operator: newTokenNoLiteral(GREATER),
+					operator: newTokenNoLiteralType(GREATER, 1, 6),
 					right:    literalExpr{5},
 				}},
 				thenBranch: blockStmt{statements: []stmt{printStmt{expr: literalExpr{true}}}},
@@ -1296,39 +1049,26 @@ func Test_ifStmt(t *testing.T) {
 			},
 		},
 		{
-			desc: "if_missing_block",
-			input: []token{
-				newTokenNoLiteral(IF),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(SEMICOLON),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(PRINT), "Expect block."),
+			desc:  "if_missing_block",
+			input: "if true print true;",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(PRINT, 1, 8), "Expect block."),
 		},
 		{
-			desc: "else_missing_block",
-			input: []token{
-				newTokenNoLiteral(IF),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-				newTokenNoLiteral(ELSE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(SEMICOLON),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(PRINT), "Expect block."),
+			desc:  "else_missing_block",
+			input: "if true {print true;} else print true;",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(PRINT, 1, 27), "Expect block."),
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1342,21 +1082,13 @@ func Test_ifStmt(t *testing.T) {
 func Test_whileStmt(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  stmt
 		err   error
 	}{
 		{
-			desc: "simple_while",
-			input: []token{
-				newTokenNoLiteral(WHILE),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "simple_while",
+			input: "while true {print 42;}",
 			want: whileStmt{
 				condition: literalExpr{true},
 				body: blockStmt{
@@ -1367,22 +1099,12 @@ func Test_whileStmt(t *testing.T) {
 			},
 		},
 		{
-			desc: "while_complex_condition",
-			input: []token{
-				newTokenNoLiteral(WHILE),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(GREATER),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "while_complex_condition",
+			input: "while 10>5 {print true;}",
 			want: whileStmt{
 				condition: binaryExpr{
 					left:     literalExpr{10},
-					operator: newTokenNoLiteral(GREATER),
+					operator: newTokenNoLiteralType(GREATER, 1, 8),
 					right:    literalExpr{5},
 				},
 				body: blockStmt{
@@ -1393,36 +1115,18 @@ func Test_whileStmt(t *testing.T) {
 			},
 		},
 		{
-			desc: "while_missing_block",
-			input: []token{
-				newTokenNoLiteral(WHILE),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(SEMICOLON),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(PRINT), "Expect block."),
+			desc:  "while_missing_block",
+			input: "while true print true;",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(PRINT, 1, 11), "Expect block."),
 		},
 		{
-			desc: "while_with_parentheses",
-			input: []token{
-				newTokenNoLiteral(WHILE),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(GREATER),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newTokenNoLiteral(TRUE),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "while_with_parentheses",
+			input: "while (10>5) {print true;}",
 			want: whileStmt{
 				condition: groupingExpr{binaryExpr{
 					left:     literalExpr{10},
-					operator: newTokenNoLiteral(GREATER),
+					operator: newTokenNoLiteralType(GREATER, 1, 9),
 					right:    literalExpr{5},
 				}},
 				body: blockStmt{statements: []stmt{printStmt{expr: literalExpr{true}}}},
@@ -1431,7 +1135,12 @@ func Test_whileStmt(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1445,53 +1154,33 @@ func Test_whileStmt(t *testing.T) {
 func Test_forStatement(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  stmt
 		err   error
 	}{
 		{
-			desc: "basic_for_loop",
-			input: []token{
-				newTokenNoLiteral(FOR),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "0", 0, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(LESS),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "1", 1, 0),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "basic_for_loop",
+			input: "for i = 0; i < 10; i = i + 1 {print i;}",
 			want: blockStmt{
 				statements: []stmt{
 					exprStmt{expr: assignExpr{
-						name:  newToken(IDENTIFIER, "i", "i", 0),
+						name:  newToken(IDENTIFIER, "i", "i", 1, 4),
 						value: literalExpr{0},
 					}},
 					whileStmt{
 						condition: binaryExpr{
-							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
-							operator: newTokenNoLiteral(LESS),
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 11)},
+							operator: newTokenNoLiteralType(LESS, 1, 13),
 							right:    literalExpr{10},
 						},
 						body: blockStmt{
 							statements: []stmt{
-								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 0)}},
+								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 36)}},
 								exprStmt{expr: assignExpr{
-									name: newToken(IDENTIFIER, "i", "i", 0),
+									name: newToken(IDENTIFIER, "i", "i", 1, 19),
 									value: binaryExpr{
-										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
-										operator: newTokenNoLiteral(PLUS),
+										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 23)},
+										operator: newTokenNoLiteralType(PLUS, 1, 25),
 										right:    literalExpr{1},
 									},
 								}},
@@ -1502,39 +1191,22 @@ func Test_forStatement(t *testing.T) {
 			},
 		},
 		{
-			desc: "for_loop_without_initializer",
-			input: []token{
-				newTokenNoLiteral(FOR),
-				newTokenNoLiteral(SEMICOLON),
-				newToken(IDENTIFIER, "x", "x", 0),
-				newTokenNoLiteral(LESS),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newToken(IDENTIFIER, "x", "x", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(IDENTIFIER, "x", "x", 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "1", 1, 0),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(IDENTIFIER, "x", "x", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "for_loop_without_initializer",
+			input: "for ; x < 5; x = x + 1 {print x;}",
 			want: whileStmt{
 				condition: binaryExpr{
-					left:     variableExpr{newToken(IDENTIFIER, "x", "x", 0)},
-					operator: newTokenNoLiteral(LESS),
+					left:     variableExpr{newToken(IDENTIFIER, "x", "x", 1, 6)},
+					operator: newTokenNoLiteralType(LESS, 1, 8),
 					right:    literalExpr{5},
 				},
 				body: blockStmt{
 					statements: []stmt{
-						printStmt{expr: variableExpr{newToken(IDENTIFIER, "x", "x", 0)}},
+						printStmt{expr: variableExpr{newToken(IDENTIFIER, "x", "x", 1, 30)}},
 						exprStmt{expr: assignExpr{
-							name: newToken(IDENTIFIER, "x", "x", 0),
+							name: newToken(IDENTIFIER, "x", "x", 1, 13),
 							value: binaryExpr{
-								left:     variableExpr{newToken(IDENTIFIER, "x", "x", 0)},
-								operator: newTokenNoLiteral(PLUS),
+								left:     variableExpr{newToken(IDENTIFIER, "x", "x", 1, 17)},
+								operator: newTokenNoLiteralType(PLUS, 1, 19),
 								right:    literalExpr{1},
 							},
 						}},
@@ -1543,41 +1215,24 @@ func Test_forStatement(t *testing.T) {
 			},
 		},
 		{
-			desc: "for_loop_without_condition",
-			input: []token{
-				newTokenNoLiteral(FOR),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "0", 0, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(SEMICOLON),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "1", 1, 0),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "for_loop_without_condition",
+			input: "for i = 0; ; i = i + 1 {print i;}",
 			want: blockStmt{
 				statements: []stmt{
 					exprStmt{expr: assignExpr{
-						name:  newToken(IDENTIFIER, "i", "i", 0),
+						name:  newToken(IDENTIFIER, "i", "i", 1, 4),
 						value: literalExpr{0},
 					}},
 					whileStmt{
 						condition: literalExpr{true},
 						body: blockStmt{
 							statements: []stmt{
-								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 0)}},
+								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 30)}},
 								exprStmt{expr: assignExpr{
-									name: newToken(IDENTIFIER, "i", "i", 0),
+									name: newToken(IDENTIFIER, "i", "i", 1, 13),
 									value: binaryExpr{
-										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
-										operator: newTokenNoLiteral(PLUS),
+										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 17)},
+										operator: newTokenNoLiteralType(PLUS, 1, 19),
 										right:    literalExpr{1},
 									},
 								}},
@@ -1588,38 +1243,23 @@ func Test_forStatement(t *testing.T) {
 			},
 		},
 		{
-			desc: "for_loop_without_increment",
-			input: []token{
-				newTokenNoLiteral(FOR),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "0", 0, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(LESS),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "for_loop_without_increment",
+			input: "for i = 0; i < 10; {print i;}",
 			want: blockStmt{
 				statements: []stmt{
 					exprStmt{expr: assignExpr{
-						name:  newToken(IDENTIFIER, "i", "i", 0),
+						name:  newToken(IDENTIFIER, "i", "i", 1, 4),
 						value: literalExpr{0},
 					}},
 					whileStmt{
 						condition: binaryExpr{
-							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
-							operator: newTokenNoLiteral(LESS),
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 11)},
+							operator: newTokenNoLiteralType(LESS, 1, 13),
 							right:    literalExpr{10},
 						},
 						body: blockStmt{
 							statements: []stmt{
-								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 0)}},
+								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 26)}},
 							},
 						},
 					},
@@ -1627,49 +1267,28 @@ func Test_forStatement(t *testing.T) {
 			},
 		},
 		{
-			desc: "for_loop_with_var_declaration",
-			input: []token{
-				newTokenNoLiteral(FOR),
-				newTokenNoLiteral(VAR),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "0", 0, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(LESS),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "1", 1, 0),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(IDENTIFIER, "i", "i", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "for_loop_with_var_declaration",
+			input: "for var i = 0; i < 5; i = i + 1 {print i;}",
 			want: blockStmt{
 				statements: []stmt{
 					varStmt{
-						name:        newToken(IDENTIFIER, "i", "i", 0),
+						name:        newToken(IDENTIFIER, "i", "i", 1, 8),
 						initializer: literalExpr{0},
 					},
 					whileStmt{
 						condition: binaryExpr{
-							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
-							operator: newTokenNoLiteral(LESS),
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 15)},
+							operator: newTokenNoLiteralType(LESS, 1, 17),
 							right:    literalExpr{5},
 						},
 						body: blockStmt{
 							statements: []stmt{
-								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 0)}},
+								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 39)}},
 								exprStmt{expr: assignExpr{
-									name: newToken(IDENTIFIER, "i", "i", 0),
+									name: newToken(IDENTIFIER, "i", "i", 1, 22),
 									value: binaryExpr{
-										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 0)},
-										operator: newTokenNoLiteral(PLUS),
+										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 26)},
+										operator: newTokenNoLiteralType(PLUS, 1, 28),
 										right:    literalExpr{1},
 									},
 								}},
@@ -1682,7 +1301,12 @@ func Test_forStatement(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1696,67 +1320,52 @@ func Test_forStatement(t *testing.T) {
 func Test_declaration(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  stmt
 		err   error
 	}{
 		{
-			desc: "var_declaration_no_initializer",
-			input: []token{
-				newTokenNoLiteral(VAR),
-				newToken(IDENTIFIER, "foo", "foo", 0),
-				newTokenNoLiteral(SEMICOLON),
-			},
+			desc:  "var_declaration_no_initializer",
+			input: "var foo;",
 			want: varStmt{
-				name:        newToken(IDENTIFIER, "foo", "foo", 0),
+				name:        newToken(IDENTIFIER, "foo", "foo", 1, 4),
 				initializer: nil,
 			},
 		},
 		{
-			desc: "var_declaration_with_initializer",
-			input: []token{
-				newTokenNoLiteral(VAR),
-				newToken(IDENTIFIER, "foo", "foo", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(SEMICOLON),
-			},
+			desc:  "var_declaration_with_initializer",
+			input: "var foo = 42;",
 			want: varStmt{
-				name:        newToken(IDENTIFIER, "foo", "foo", 0),
+				name:        newToken(IDENTIFIER, "foo", "foo", 1, 4),
 				initializer: literalExpr{42},
 			},
 		},
 		{
-			desc: "missing_semicolon",
-			input: []token{
-				newTokenNoLiteral(VAR),
-				newToken(IDENTIFIER, "foo", "foo", 0),
-				newTokenNoLiteral(EOF),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(EOF), "Expect ';' after variable declaration."),
+			desc:  "missing_semicolon",
+			input: "var foo",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(EOF, 1, 7), "Expect ';' after variable declaration."),
 		},
 		{
-			desc: "missing_identifier",
-			input: []token{
-				newTokenNoLiteral(VAR),
-				newTokenNoLiteral(SEMICOLON),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(SEMICOLON), "Expect variable name."),
+			desc:  "missing_identifier",
+			input: "var;",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(SEMICOLON, 1, 3), "Expect variable name."),
 		},
 		{
-			desc: "expr_statement_fallback",
-			input: []token{
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(SEMICOLON),
-			},
-			want: exprStmt{expr: literalExpr{42}},
+			desc:  "expr_statement_fallback",
+			input: "42;",
+			want:  exprStmt{expr: literalExpr{42}},
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.declaration()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1770,57 +1379,34 @@ func Test_declaration(t *testing.T) {
 func Test_function(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  stmt
 		err   error
 	}{
 		{
-			desc: "function_declaration",
-			input: []token{
-				newTokenNoLiteral(FN),
-				newToken(IDENTIFIER, "greet", "greet", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(IDENTIFIER, "name", "name", 0),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(STRING, "Hello, ", "Hello, ", 0),
-				newTokenNoLiteral(PLUS),
-				newToken(IDENTIFIER, "name", "name", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "function_declaration",
+			input: "fn greet(name) {print \"Hello, \" + name;}",
 			want: functionStmt{
-				name: newToken(IDENTIFIER, "greet", "greet", 0),
+				name: newToken(IDENTIFIER, "greet", "greet", 1, 3),
 				params: []token{
-					newToken(IDENTIFIER, "name", "name", 0),
+					newToken(IDENTIFIER, "name", "name", 1, 9),
 				},
 				body: []stmt{
 					printStmt{
 						expr: binaryExpr{
 							left:     literalExpr{"Hello, "},
-							operator: newTokenNoLiteral(PLUS),
-							right:    variableExpr{newToken(IDENTIFIER, "name", "name", 0)},
+							operator: newTokenNoLiteralType(PLUS, 1, 32),
+							right:    variableExpr{newToken(IDENTIFIER, "name", "name", 1, 34)},
 						},
 					},
 				},
 			},
 		},
 		{
-			desc: "function_no_params",
-			input: []token{
-				newTokenNoLiteral(FN),
-				newToken(IDENTIFIER, "hello", "hello", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(STRING, "Hello!", "Hello!", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "function_no_params",
+			input: "fn hello() {print \"Hello!\";}",
 			want: functionStmt{
-				name:   newToken(IDENTIFIER, "hello", "hello", 0),
+				name:   newToken(IDENTIFIER, "hello", "hello", 1, 3),
 				params: []token{},
 				body: []stmt{
 					printStmt{expr: literalExpr{"Hello!"}},
@@ -1828,93 +1414,58 @@ func Test_function(t *testing.T) {
 			},
 		},
 		{
-			desc: "function_multiple_params",
-			input: []token{
-				newTokenNoLiteral(FN),
-				newToken(IDENTIFIER, "add", "add", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(IDENTIFIER, "a", "a", 0),
-				newTokenNoLiteral(COMMA),
-				newToken(IDENTIFIER, "b", "b", 0),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(PRINT),
-				newToken(IDENTIFIER, "a", "a", 0),
-				newTokenNoLiteral(PLUS),
-				newToken(IDENTIFIER, "b", "b", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
+			desc:  "function_multiple_params",
+			input: "fn add(a,b) {print a + b;}",
 			want: functionStmt{
-				name: newToken(IDENTIFIER, "add", "add", 0),
+				name: newToken(IDENTIFIER, "add", "add", 1, 3),
 				params: []token{
-					newToken(IDENTIFIER, "a", "a", 0),
-					newToken(IDENTIFIER, "b", "b", 0),
+					newToken(IDENTIFIER, "a", "a", 1, 7),
+					newToken(IDENTIFIER, "b", "b", 1, 9),
 				},
 				body: []stmt{
 					printStmt{
 						expr: binaryExpr{
-							left:     variableExpr{newToken(IDENTIFIER, "a", "a", 0)},
-							operator: newTokenNoLiteral(PLUS),
-							right:    variableExpr{newToken(IDENTIFIER, "b", "b", 0)},
+							left:     variableExpr{newToken(IDENTIFIER, "a", "a", 1, 19)},
+							operator: newTokenNoLiteralType(PLUS, 1, 21),
+							right:    variableExpr{newToken(IDENTIFIER, "b", "b", 1, 23)},
 						},
 					},
 				},
 			},
 		},
 		{
-			desc: "missing_function_name",
-			input: []token{
-				newTokenNoLiteral(FN),
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(LEFT_PAREN), "Expect function name."),
+			desc:  "missing_function_name",
+			input: "fn() {}",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(LEFT_PAREN, 1, 2), "Expect function name."),
 		},
 		{
-			desc: "missing_left_paren",
-			input: []token{
-				newTokenNoLiteral(FN),
-				newToken(IDENTIFIER, "test", "test", 0),
-				newToken(IDENTIFIER, "param", "param", 0),
-				newTokenNoLiteral(RIGHT_PAREN),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
-			want: nil,
-			err:  NewParseError(newToken(IDENTIFIER, "param", "param", 0), "Expect '(' after function name."),
+			desc:  "missing_left_paren",
+			input: "fn test param) {}",
+			want:  nil,
+			err:   NewParseError(newToken(IDENTIFIER, "param", "param", 1, 8), "Expect '(' after function name."),
 		},
 		{
-			desc: "missing_right_paren",
-			input: []token{
-				newTokenNoLiteral(FN),
-				newToken(IDENTIFIER, "test", "test", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newToken(IDENTIFIER, "param", "param", 0),
-				newTokenNoLiteral(LEFT_BRACE),
-				newTokenNoLiteral(RIGHT_BRACE),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(LEFT_BRACE), "Expect ')' after parameters."),
+			desc:  "missing_right_paren",
+			input: "fn test(param {}",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(LEFT_BRACE, 1, 14), "Expect ')' after parameters."),
 		},
 		{
-			desc: "missing_body",
-			input: []token{
-				newTokenNoLiteral(FN),
-				newToken(IDENTIFIER, "test", "test", 0),
-				newTokenNoLiteral(LEFT_PAREN),
-				newTokenNoLiteral(RIGHT_PAREN),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(RIGHT_PAREN), "Expect block."),
+			desc:  "missing_body",
+			input: "fn test()",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(EOF, 1, 9), "Expect block."),
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.function("function")
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1928,65 +1479,53 @@ func Test_function(t *testing.T) {
 func Test_returnStatement(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  stmt
 		err   error
 	}{
 		{
-			desc: "return_with_value",
-			input: []token{
-				newTokenNoLiteral(RETURN),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(SEMICOLON),
-			},
+			desc:  "return_with_value",
+			input: "return 42;",
 			want: returnStmt{
-				keyword: newTokenNoLiteral(RETURN),
+				keyword: newTokenNoLiteralType(RETURN, 1, 0),
 				value:   literalExpr{42},
 			},
 		},
 		{
-			desc: "return_without_value",
-			input: []token{
-				newTokenNoLiteral(RETURN),
-				newTokenNoLiteral(SEMICOLON),
-			},
+			desc:  "return_without_value",
+			input: "return;",
 			want: returnStmt{
-				keyword: newTokenNoLiteral(RETURN),
+				keyword: newTokenNoLiteralType(RETURN, 1, 0),
 				value:   nil,
 			},
 		},
 		{
-			desc: "return_with_expression",
-			input: []token{
-				newTokenNoLiteral(RETURN),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(PLUS),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(SEMICOLON),
-			},
+			desc:  "return_with_expression",
+			input: "return 10 + 5;",
 			want: returnStmt{
-				keyword: newTokenNoLiteral(RETURN),
+				keyword: newTokenNoLiteralType(RETURN, 1, 0),
 				value: binaryExpr{
 					left:     literalExpr{10},
-					operator: newTokenNoLiteral(PLUS),
+					operator: newTokenNoLiteralType(PLUS, 1, 10),
 					right:    literalExpr{5},
 				},
 			},
 		},
 		{
-			desc: "missing_semicolon",
-			input: []token{
-				newTokenNoLiteral(RETURN),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(EOF),
-			},
-			want: nil,
-			err:  NewParseError(newTokenNoLiteral(EOF), "Expect ';' after return value."),
+			desc:  "missing_semicolon",
+			input: "return 42",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(EOF, 1, 9), "Expect ';' after return value."),
 		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.returnStatement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -2000,102 +1539,61 @@ func Test_returnStatement(t *testing.T) {
 func Test_Parse(t *testing.T) {
 	testCases := []struct {
 		desc  string
-		input []token
+		input string
 		want  []stmt
 		err   error
 	}{
 		{
-			desc: "single_print_statement",
-			input: []token{
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(EOF),
-			},
-			want: []stmt{printStmt{expr: literalExpr{42}}},
+			desc:  "single_print_statement",
+			input: "print 42;",
+			want:  []stmt{printStmt{expr: literalExpr{42}}},
 		},
 		{
-			desc: "multiple_statements",
-			input: []token{
-				newTokenNoLiteral(VAR),
-				newToken(IDENTIFIER, "foo", "foo", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(PRINT),
-				newToken(IDENTIFIER, "foo", "foo", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(EOF),
-			},
+			desc:  "multiple_statements",
+			input: "var foo = 42;\nprint foo;",
 			want: []stmt{
 				varStmt{
-					name:        newToken(IDENTIFIER, "foo", "foo", 0),
+					name:        newToken(IDENTIFIER, "foo", "foo", 1, 4),
 					initializer: literalExpr{42},
 				},
-				printStmt{expr: variableExpr{newToken(IDENTIFIER, "foo", "foo", 0)}},
+				printStmt{expr: variableExpr{newToken(IDENTIFIER, "foo", "foo", 2, 20)}},
 			},
 		},
 		{
-			desc: "variable_with_ternary",
-			input: []token{
-				newTokenNoLiteral(VAR),
-				newToken(IDENTIFIER, "result", "result", 0),
-				newTokenNoLiteral(EQUAL),
-				newToken(NUMBER, "10", 10, 0),
-				newTokenNoLiteral(GREATER),
-				newToken(NUMBER, "5", 5, 0),
-				newTokenNoLiteral(QUESTION),
-				newToken(STRING, "yes", "yes", 0),
-				newTokenNoLiteral(COLON),
-				newToken(STRING, "no", "no", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(EOF),
-			},
+			desc:  "variable_with_ternary",
+			input: "var result = 10 > 5 ? \"yes\" : \"no\";",
 			want: []stmt{
 				varStmt{
-					name: newToken(IDENTIFIER, "result", "result", 0),
+					name: newToken(IDENTIFIER, "result", "result", 1, 4),
 					initializer: binaryExpr{
 						left: binaryExpr{
 							left: binaryExpr{
 								left:     literalExpr{10},
-								operator: newTokenNoLiteral(GREATER),
+								operator: newToken(GREATER, ">", ">", 1, 16),
 								right:    literalExpr{5},
 							},
-							operator: newTokenNoLiteral(QUESTION),
+							operator: newToken(QUESTION, "?", "?", 1, 20),
 							right:    literalExpr{"yes"},
 						},
-						operator: newTokenNoLiteral(COLON),
+						operator: newToken(COLON, ":", ":", 1, 28),
 						right:    literalExpr{"no"},
 					},
 				},
 			},
 		},
 		{
-			desc: "empty_input",
-			input: []token{
-				newTokenNoLiteral(EOF),
-			},
-			want: []stmt{},
+			desc:  "empty_input",
+			input: "",
+			want:  []stmt{},
 		},
 		{
-			desc: "parse_error",
-			input: []token{
-				newTokenNoLiteral(PRINT),
-				newToken(NUMBER, "42", 42, 0),
-				newTokenNoLiteral(EOF),
-			},
-			want: []stmt{},
+			desc:  "parse_error",
+			input: "print 42",
+			want:  []stmt{},
 		},
 		{
-			desc: "synchronize_recovers_at_statement_boundary",
-			input: []token{
-				newTokenNoLiteral(VAR),
-				newToken(NUMBER, "42", 42, 0), // Missing semicolon
-				newTokenNoLiteral(PRINT),      // Next statement boundary
-				newToken(STRING, "hello", "hello", 0),
-				newTokenNoLiteral(SEMICOLON),
-				newTokenNoLiteral(EOF),
-			},
+			desc:  "synchronize_recovers_at_statement_boundary",
+			input: "var 42\nprint \"hello\";",
 			want: []stmt{
 				printStmt{expr: literalExpr{"hello"}},
 			},
@@ -2104,7 +1602,12 @@ func Test_Parse(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			parser := NewParser(tC.input)
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(tokens)
 			got, err := parser.Parse()
 			if err != nil {
 				assert.Equal(t, tC.err, err)

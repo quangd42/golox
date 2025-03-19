@@ -2,7 +2,10 @@ package lox
 
 import "errors"
 
-var ErrStackEmpty = errors.New("stack empty")
+var (
+	ErrStackEmpty = errors.New("stack empty")
+	ErrOutOfBound = errors.New("out of bound")
+)
 
 type scopeStack struct {
 	val []map[string]bool
@@ -17,10 +20,10 @@ func (s *scopeStack) push(v map[string]bool) {
 }
 
 func (s *scopeStack) pop() (map[string]bool, error) {
-	if len(s.val) == 0 {
-		return nil, ErrStackEmpty
+	v, err := s.peek()
+	if err != nil {
+		return nil, err
 	}
-	v := s.val[len(s.val)-1]
 	s.val = s.val[:len(s.val)-1]
 	return v, nil
 }
@@ -44,9 +47,10 @@ func (s *scopeStack) size() int {
 	return len(s.val)
 }
 
+// get returns the scope at the given index from the top of the stack.
 func (s *scopeStack) get(idx int) (map[string]bool, error) {
-	if idx > s.size()-1 {
-		return nil, ErrStackEmpty
+	if idx < 0 || idx > s.size()-1 {
+		return nil, ErrOutOfBound
 	}
-	return s.val[idx], nil
+	return s.val[len(s.val)-1-idx], nil
 }

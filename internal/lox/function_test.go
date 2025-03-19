@@ -18,7 +18,7 @@ func Test_function_call(t *testing.T) {
 			name: "simple function with no return",
 			fn: function{
 				declaration: functionStmt{
-					name:   newToken(IDENTIFIER, "test", "test", 0),
+					name:   newToken(IDENTIFIER, "test", "test", 0, 1),
 					params: []token{},
 					body:   []stmt{},
 				},
@@ -32,7 +32,7 @@ func Test_function_call(t *testing.T) {
 			name: "function with return value",
 			fn: function{
 				declaration: functionStmt{
-					name:   newToken(IDENTIFIER, "test", "test", 0),
+					name:   newToken(IDENTIFIER, "test", "test", 0, 1),
 					params: []token{},
 					body: []stmt{
 						returnStmt{
@@ -51,10 +51,10 @@ func Test_function_call(t *testing.T) {
 			name: "function with parameters",
 			fn: function{
 				declaration: functionStmt{
-					name: newToken(IDENTIFIER, "test", "test", 0),
+					name: newToken(IDENTIFIER, "test", "test", 0, 1),
 					params: []token{
-						newToken(IDENTIFIER, "x", "x", 0),
-						newToken(IDENTIFIER, "y", "y", 0),
+						newToken(IDENTIFIER, "x", "x", 0, 1),
+						newToken(IDENTIFIER, "y", "y", 0, 1),
 					},
 					body: []stmt{},
 				},
@@ -68,13 +68,13 @@ func Test_function_call(t *testing.T) {
 			name: "runtime error in function body",
 			fn: function{
 				declaration: functionStmt{
-					name:   newToken(IDENTIFIER, "test", "test", 0),
+					name:   newToken(IDENTIFIER, "test", "test", 0, 1),
 					params: []token{},
 					body: []stmt{
 						exprStmt{
 							expr: binaryExpr{
 								left:     literalExpr{value: 1},
-								operator: newTokenNoLiteral(MINUS),
+								operator: newTokenNoLiteralType(MINUS, 1, 32),
 								right:    literalExpr{value: "string"}, // Invalid operation
 							},
 						},
@@ -84,7 +84,7 @@ func Test_function_call(t *testing.T) {
 			args:    []any{},
 			want:    nil,
 			wantErr: true,
-			err:     NewRuntimeError(newToken(IDENTIFIER, "test", "test", 0), "Operand must be a number."),
+			err:     NewRuntimeError(newToken(IDENTIFIER, "test", "test", 0, 1), "Operand must be a number."),
 		},
 	}
 
