@@ -9,3 +9,9 @@ fn add(a, b) {
 }
 
 print add(1, 22);
+
+fn test(x) {
+	return x;
+}
+
+print test(42);

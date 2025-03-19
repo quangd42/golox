@@ -15,7 +15,11 @@ func NewResolver(interpreter *Interpreter) *Resolver {
 }
 
 func (r *Resolver) Resolve(stmts []stmt) error {
-	return r.resolveStmtList(stmts)
+	err := r.resolveStmtList(stmts)
+	if err != nil {
+		fmt.Print(err)
+	}
+	return nil
 }
 
 func (r *Resolver) resolveStmtList(stmts []stmt) error {
@@ -45,17 +49,20 @@ func (r *Resolver) resolveFunction(s functionStmt) error {
 		r.declare(param)
 		r.define(param)
 	}
-	r.resolveStmtList(s.body)
+	err := r.resolveStmtList(s.body)
+	if err != nil {
+		return err
+	}
 	// NOTE: Explicitly return nil so that endScope() runs AFTER resolveStmtList()
 	return nil
 }
 
 func (r *Resolver) resolveLocal(e expr, name token) {
 	scopeLen := r.scopes.size()
-	for i := scopeLen - 1; i >= 0; i-- {
+	for i := range scopeLen {
 		scope, _ := r.scopes.get(i)
 		if _, ok := scope[name.lexeme]; ok {
-			r.interpreter.resolve(e, scopeLen-1-i)
+			r.interpreter.resolve(e, i)
 			return
 		}
 	}
@@ -66,9 +73,6 @@ func (r *Resolver) beginScope() {
 }
 
 func (r *Resolver) endScope() {
-	if !r.scopes.isEmpty() {
-		return
-	}
 	r.scopes.pop()
 }
 
@@ -90,22 +94,33 @@ func (r *Resolver) define(name token) {
 
 func (r *Resolver) visitBinaryExpr(e binaryExpr) (any, error) {
 	// TODO: after logger, report error here
-	r.resolveExpr(e.left)
-	r.resolveExpr(e.right)
+	_, err := r.resolveExpr(e.left)
+	if err != nil {
+		return nil, err
+	}
+	_, err = r.resolveExpr(e.right)
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
 func (r *Resolver) visitCallExpr(e callExpr) (any, error) {
-	r.resolveExpr(e.callee)
+	_, err := r.resolveExpr(e.callee)
+	if err != nil {
+		return nil, err
+	}
 	for _, a := range e.arguments {
-		r.resolveExpr(a)
+		_, err := r.resolveExpr(a)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return nil, nil
 }
 
 func (r *Resolver) visitGroupingExpr(e groupingExpr) (any, error) {
-	r.resolveExpr(e.expr)
-	return nil, nil
+	return r.resolveExpr(e.expr)
 }
 
 func (r *Resolver) visitLiteralExpr(e literalExpr) (any, error) {
@@ -113,22 +128,26 @@ func (r *Resolver) visitLiteralExpr(e literalExpr) (any, error) {
 }
 
 func (r *Resolver) visitLogicalExpr(e logicalExpr) (any, error) {
-	r.resolveExpr(e.left)
-	r.resolveExpr(e.right)
+	_, err := r.resolveExpr(e.left)
+	if err != nil {
+		return nil, err
+	}
+	_, err = r.resolveExpr(e.right)
+	if err != nil {
+		return nil, err
+	}
 	return nil, nil
 }
 
 func (r *Resolver) visitUnaryExpr(e unaryExpr) (any, error) {
-	r.resolveExpr(e.right)
-	return nil, nil
+	return r.resolveExpr(e.right)
 }
 
 func (r *Resolver) visitVariableExpr(e variableExpr) (any, error) {
 	if currentScope, err := r.scopes.peek(); err != nil {
 		exists, ok := currentScope[e.name.lexeme]
 		if ok && !exists {
-			// TODO: return nil, NewParseError(e.name, "Can't read local variable in its own initializer.")
-			fmt.Printf("[line %d] Error: Can't read local variable in its own initializer.", e.name.line)
+			return nil, NewParseError(e.name, "Can't read local variable in its own initializer.")
 		}
 	}
 	r.resolveLocal(e, e.name)
@@ -136,57 +155,82 @@ func (r *Resolver) visitVariableExpr(e variableExpr) (any, error) {
 }
 
 func (r *Resolver) visitAssignExpr(e assignExpr) (any, error) {
-	r.resolveExpr(e.value)
+	_, err := r.resolveExpr(e.value)
+	if err != nil {
+		return nil, err
+	}
 	r.resolveLocal(e, e.name)
 	return nil, nil
 }
 
 func (r *Resolver) visitExprStmt(s exprStmt) error {
-	r.resolveExpr(s.expr)
+	_, err := r.resolveExpr(s.expr)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (r *Resolver) visitFunctionStmt(s functionStmt) error {
 	r.declare(s.name)
 	r.define(s.name)
-	r.resolveFunction(s)
-	return nil
+	return r.resolveFunction(s)
 }
 
 func (r *Resolver) visitIfStmt(s ifStmt) error {
-	r.resolveExpr(s.condition)
-	r.resolveStmt(s.thenBranch)
+	_, err := r.resolveExpr(s.condition)
+	if err != nil {
+		return err
+	}
+	err = r.resolveStmt(s.thenBranch)
+	if err != nil {
+		return err
+	}
 	if s.elseBranch != nil {
-		r.resolveStmt(s.elseBranch)
+		err = r.resolveStmt(s.elseBranch)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (r *Resolver) visitPrintStmt(s printStmt) error {
-	r.resolveExpr(s.expr)
+	_, err := r.resolveExpr(s.expr)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (r *Resolver) visitReturnStmt(s returnStmt) error {
 	if s.value != nil {
-		r.resolveExpr(s.value)
+		_, err := r.resolveExpr(s.value)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 func (r *Resolver) visitVarStmt(s varStmt) error {
 	r.declare(s.name)
+	defer r.define(s.name)
 	if s.initializer != nil {
-		r.resolveExpr(s.initializer)
+		_, err := r.resolveExpr(s.initializer)
+		if err != nil {
+			return err
+		}
 	}
-	r.define(s.name)
 	return nil
 }
 
 func (r *Resolver) visitWhileStmt(s whileStmt) error {
-	r.resolveExpr(s.condition)
-	r.resolveStmt(s.body)
-	return nil
+	_, err := r.resolveExpr(s.condition)
+	if err != nil {
+		return err
+	}
+	return r.resolveStmt(s.body)
 }
 
 func (r *Resolver) visitBlockStmt(s blockStmt) error {

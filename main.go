@@ -83,8 +83,6 @@ func run(i *lox.Interpreter, r *lox.Resolver, source []byte) error {
 	}
 	parser := lox.NewParser(tokens)
 	stmts, err := parser.Parse()
-	// __AUTO_GENERATED_PRINT_VAR_START__
-	fmt.Println(fmt.Sprintf("run stmts: %#v", stmts)) // __AUTO_GENERATED_PRINT_VAR_END__
 	if err != nil {
 		return err
 	}

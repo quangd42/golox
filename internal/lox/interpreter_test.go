@@ -507,108 +507,119 @@ func Test_interpretLogicalExpr(t *testing.T) {
 }
 
 // TODO: this probably needs to run through resolver
-// func Test_interpretCallExpr(t *testing.T) {
-// 	testCases := []struct {
-// 		desc    string
-// 		input   string
-// 		code    string
-// 		initEnv map[string]any
-// 		want    any
-// 		err     error
-// 	}{
-// 		{
-// 			desc:  "call_simple_function",
-// 			input: "test(42)",
-// 			code: `fn test(x) {
-// 				return x;
-// 			}`,
-// 			initEnv: map[string]any{},
-// 			want:    42,
-// 			err:     nil,
-// 		},
-// 		{
-// 			desc:    "call_undefined_function",
-// 			input:   "undefined(42)",
-// 			code:    "",
-// 			initEnv: map[string]any{},
-// 			want:    nil,
-// 			err:     NewRuntimeError(newToken(IDENTIFIER, "undefined", nil, 1, 0), "Undefined variable 'undefined'."),
-// 		},
-// 		{
-// 			desc:    "call_non_function",
-// 			input:   "notfunc(42)",
-// 			code:    "",
-// 			initEnv: map[string]any{"notfunc": "string"},
-// 			want:    nil,
-// 			err:     NewRuntimeError(newToken(RIGHT_PAREN, ")", nil, 1, 7), "Can only call functions and classes."),
-// 		},
-// 		{
-// 			desc:  "wrong_arity",
-// 			input: "test(42, 43)",
-// 			code: `fn test(x) {
-// 				return x;
-// 			}`,
-// 			initEnv: map[string]any{},
-// 			want:    nil,
-// 			err:     NewRuntimeError(newToken(RIGHT_PAREN, ")", nil, 1, 11), "Expected 1 arguments but got 2."),
-// 		},
-// 	}
+func Test_interpretCallExpr(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		input   string
+		code    string
+		initEnv map[string]any
+		want    any
+		err     error
+	}{
+		{
+			desc:  "call_simple_function",
+			input: "test(42)",
+			code: `fn test(x) {
+				return x;
+			}`,
+			initEnv: map[string]any{},
+			want:    42,
+			err:     nil,
+		},
+		{
+			desc:    "call_undefined_function",
+			input:   "undefined(42)",
+			code:    "",
+			initEnv: map[string]any{},
+			want:    nil,
+			err:     NewRuntimeError(newToken(IDENTIFIER, "undefined", nil, 1, 0), "Undefined variable 'undefined'."),
+		},
+		{
+			desc:    "call_non_function",
+			input:   "notfunc(42)",
+			code:    "",
+			initEnv: map[string]any{"notfunc": "string"},
+			want:    nil,
+			err:     NewRuntimeError(newToken(RIGHT_PAREN, ")", nil, 1, 7), "Can only call functions and classes."),
+		},
+		{
+			desc:  "wrong_arity",
+			input: "test(42, 43)",
+			code: `fn test(x) {
+				return x;
+			}`,
+			initEnv: map[string]any{},
+			want:    nil,
+			err:     NewRuntimeError(newToken(RIGHT_PAREN, ")", nil, 1, 11), "Expected 1 arguments but got 2."),
+		},
+	}
 
-// 	for _, tC := range testCases {
-// 		t.Run(tC.desc, func(t *testing.T) {
-// 			t.Parallel()
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			t.Parallel()
 
-// 			interpreter := NewInterpreter()
-// 			for k, v := range tC.initEnv {
-// 				interpreter.env.define(k, v)
-// 			}
+			interpreter := NewInterpreter()
+			for k, v := range tC.initEnv {
+				interpreter.env.define(k, v)
+			}
 
-// 			// Parse and execute function declaration if present
-// 			if tC.code != "" {
-// 				scanner := NewScanner([]byte(tC.code))
-// 				tokens, err := scanner.ScanTokens()
-// 				if err != nil {
-// 					t.Fatal(err)
-// 				}
+			// Parse and execute function declaration if present
+			if tC.code != "" {
+				scanner := NewScanner([]byte(tC.code))
+				tokens, err := scanner.ScanTokens()
+				if err != nil {
+					t.Fatal(err)
+				}
 
-// 				parser := NewParser(tokens)
-// 				stmts, err := parser.Parse()
-// 				if err != nil {
-// 					t.Fatal(err)
-// 				}
+				parser := NewParser(tokens)
+				stmts, err := parser.Parse()
+				if err != nil {
+					t.Fatal(err)
+				}
 
-// 				for _, stmt := range stmts {
-// 					fmt.Printf("Executing statement: %T\n", stmt)
-// 					err = interpreter.execute(stmt)
-// 					if err != nil {
-// 						t.Fatal(err)
-// 					}
-// 				}
-// 			}
+				resolver := NewResolver(interpreter)
+				err = resolver.Resolve(stmts)
+				if err != nil {
+					t.Fatal(err)
+				}
 
-// 			// Parse and execute function call
-// 			scanner := NewScanner([]byte(tC.input))
-// 			tokens, err := scanner.ScanTokens()
-// 			if err != nil {
-// 				t.Fatal(err)
-// 			}
+				for _, stmt := range stmts {
+					err = interpreter.execute(stmt)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
 
-// 			parser := NewParser(tokens)
-// 			expr, err := parser.expression()
-// 			if err != nil {
-// 				t.Fatal(err)
-// 			}
+			// Parse and execute function call
+			scanner := NewScanner([]byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Fatal(err)
+			}
 
-// 			got, err := interpreter.visitCallExpr(expr.(callExpr))
-// 			assert.Equal(t, tC.want, got)
-// 			if tC.err != nil {
-// 				assert.EqualError(t, err, tC.err.Error())
-// 			} else {
-// 				assert.NoError(t, err)
-// 			}
-// 		})
-// 	}
-// }
+			parser := NewParser(tokens)
+			expr, err := parser.expression()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			resolver := NewResolver(interpreter)
+			_, err = resolver.resolveExpr(expr)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := interpreter.visitCallExpr(expr.(callExpr))
+			assert.Equal(t, tC.want, got)
+			if tC.err != nil {
+				assert.EqualError(t, err, tC.err.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
 
 func Test_interpretVarStmt(t *testing.T) {
 	testCases := []struct {
