@@ -15,10 +15,18 @@ const (
 
 type function struct {
 	declaration functionStmt
+	closure     *environment
+}
+
+func NewFunction(stmt functionStmt, closure *environment) function {
+	return function{
+		declaration: stmt,
+		closure:     closure,
+	}
 }
 
 func (f function) call(i *Interpreter, args []any) (any, error) {
-	env := NewEnvironment(i.globals)
+	env := NewEnvironment(f.closure)
 	for idx, param := range f.declaration.params {
 		env.define(param.lexeme, args[idx])
 	}

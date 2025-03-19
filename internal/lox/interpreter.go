@@ -336,7 +336,7 @@ func (i *Interpreter) visitExprStmt(s exprStmt) error {
 }
 
 func (i *Interpreter) visitFunctionStmt(s functionStmt) error {
-	i.env.define(s.name.lexeme, function{s})
+	i.env.define(s.name.lexeme, NewFunction(s, i.env))
 	return nil
 }
 
