@@ -9,16 +9,18 @@ import (
 var ErrEOF = errors.New("EOF")
 
 type Scanner struct {
-	Tokens  []token
+	er      ErrorReporter
+	tokens  []token
 	source  []byte
 	line    int
 	current int
 	start   int
 }
 
-func NewScanner(source []byte) *Scanner {
+func NewScanner(er ErrorReporter, source []byte) *Scanner {
 	return &Scanner{
-		Tokens: make([]token, 0),
+		er:     er,
+		tokens: make([]token, 0),
 		source: source,
 		line:   1,
 	}
@@ -29,17 +31,11 @@ func (s *Scanner) ScanTokens() ([]token, error) {
 	for !s.isAtEnd() {
 		err = s.scanToken()
 		if err != nil {
-			// Report the error but continue to scan the rest
-			fmt.Println(err.Error())
+			return nil, err
 		}
 	}
-	s.Tokens = append(s.Tokens, newToken(EOF, "", nil, s.line, s.start))
-	// If any syntax error was found, return a "syntax error" so that
-	// main function can stop after scanning.
-	if err != nil {
-		return s.Tokens, errors.New("found syntax error")
-	}
-	return s.Tokens, nil
+	s.tokens = append(s.tokens, newToken(EOF, "", nil, s.line, s.start))
+	return s.tokens, nil
 }
 
 func (s *Scanner) isAtEnd() bool {
@@ -133,7 +129,8 @@ func (s *Scanner) scanToken() error {
 		case isAlpha(char):
 			return s.addTokenIdentifier()
 		default:
-			return errUnsupportedCharacter(s.line, char)
+			s.er.ScanError(s.line, fmt.Sprintf("unsupported character '%s'", string(char)))
+			return nil
 		}
 	}
 	return nil
@@ -155,7 +152,7 @@ func (s *Scanner) advance() rune {
 
 // addToken appends a new token to the scanner's internal tokens
 func (s *Scanner) addToken(t tokenType, literal any) {
-	s.Tokens = append(s.Tokens, newToken(t, s.makeLexeme(), literal, s.line, s.start))
+	s.tokens = append(s.tokens, newToken(t, s.makeLexeme(), literal, s.line, s.start))
 }
 
 // peek returns the current rune without consuming it
@@ -183,7 +180,7 @@ func (s *Scanner) addTokenString() error {
 	for {
 		c, err := s.peek()
 		if errors.Is(err, ErrEOF) {
-			return errUnterminatedString(s.line)
+			s.er.ScanError(s.line, "unterminated string")
 		}
 		if c == '\n' {
 			s.line++
@@ -214,7 +211,8 @@ func (s *Scanner) addTokenNumber() error {
 			if !isFloat {
 				isFloat = true
 			} else {
-				return errInvalidNumber(s.line, s.makeLexeme())
+				s.er.ScanError(s.line, fmt.Sprintf("invalid number '%s'", s.makeLexeme()+string(c)))
+				return nil
 			}
 		}
 		s.advance()
@@ -228,7 +226,8 @@ func (s *Scanner) addTokenNumber() error {
 		num, err = strconv.Atoi(lex)
 	}
 	if err != nil {
-		return errInvalidNumber(s.line, lex)
+		s.er.ScanError(s.line, fmt.Sprintf("invalid number '%s'", lex))
+		return nil
 	}
 	s.addToken(NUMBER, num)
 	return nil

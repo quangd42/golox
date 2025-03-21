@@ -90,7 +90,7 @@ func Test_function_call(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			got, err := tt.fn.call(interpreter, tt.args)
 
 			if (err != nil) != tt.wantErr {

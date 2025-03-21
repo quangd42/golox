@@ -8,16 +8,18 @@ import (
 )
 
 type Interpreter struct {
+	er        ErrorReporter
 	globals   *environment
 	locals    map[expr]int
 	env       *environment
 	currentFn fnType
 }
 
-func NewInterpreter() *Interpreter {
+func NewInterpreter(er ErrorReporter) *Interpreter {
 	globals := NewGlobalEnvironment()
 	defineClockFn(globals)
 	return &Interpreter{
+		er:        er,
 		globals:   globals,
 		locals:    make(map[expr]int, 0),
 		env:       globals,
@@ -29,9 +31,12 @@ func (i *Interpreter) Interpret(stmts []stmt) error {
 	for _, stmt := range stmts {
 		err := i.execute(stmt)
 		if err != nil {
-			// TODO: Replace this with a logger
-			fmt.Printf("%v\n", err)
-			return err
+			var rtErr RuntimeError
+			if errors.As(err, &rtErr) {
+				i.er.RuntimeError(rtErr)
+			} else {
+				return err
+			}
 		}
 	}
 	return nil

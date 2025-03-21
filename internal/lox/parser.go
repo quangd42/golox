@@ -6,12 +6,13 @@ import (
 )
 
 type Parser struct {
+	er      ErrorReporter
 	tokens  []token
 	current int
 }
 
-func NewParser(tokens []token) *Parser {
-	return &Parser{tokens: tokens, current: 0}
+func NewParser(er ErrorReporter, tokens []token) *Parser {
+	return &Parser{er: er, tokens: tokens, current: 0}
 }
 
 /*
@@ -43,7 +44,6 @@ func (p *Parser) declaration() (out stmt, err error) {
 	}
 	// print error and synchronize at statement level
 	if err != nil {
-		fmt.Println(err.Error())
 		p.synchronize()
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (p *Parser) function(ft fnType) (stmt, error) {
 	if !p.match(RIGHT_PAREN) {
 		for {
 			if len(parameters) >= 255 {
-				return nil, NewParseError(p.peek(), "Can't have more than 255 parameters.")
+				return nil, p.er.ParseError(p.peek(), "Can't have more than 255 parameters.")
 			}
 			param, err := p.consume(IDENTIFIER, "Expect parameter name.")
 			if err != nil {
@@ -113,7 +113,7 @@ func (p *Parser) varDecl() (stmt, error) {
 		p.advance()
 		initializer, err = p.expression()
 		if err != nil {
-			return nil, NewParseError(p.peek(), "Expect expression.")
+			return nil, p.er.ParseError(p.peek(), "Expect expression.")
 		}
 	}
 	if _, err := p.consume(SEMICOLON, "Expect ';' after variable declaration."); err != nil {
@@ -347,7 +347,7 @@ func (p *Parser) assignment() (expr, error) {
 		}
 		varExpr, ok := out.(variableExpr)
 		if !ok {
-			return nil, NewParseError(tok, "Invalid assignment target.")
+			return nil, p.er.ParseError(tok, "Invalid assignment target.")
 		}
 		out = assignExpr{name: varExpr.name, value: val}
 	}
@@ -408,7 +408,7 @@ func (p *Parser) ternary() (expr, error) {
 			return nil, err
 		}
 		if !rOper.hasType(COLON) {
-			return nil, NewParseError(lOper, "Expect ':' after expression.")
+			return nil, p.er.ParseError(lOper, "Expect ':' after expression.")
 		}
 		falseExpr, err := p.ternary()
 		if err != nil {
@@ -536,9 +536,11 @@ func (p *Parser) finishCall(callee expr) (expr, error) {
 	if !p.match(RIGHT_PAREN) {
 		for {
 			if len(args) >= 255 {
-				return nil, NewParseError(p.peek(), "Can't have more than 255 arguments.")
+				return nil, p.er.ParseError(p.peek(), "Can't have more than 255 arguments.")
 			}
-			// NOTE: only allowing 'assignment' expression or higher in function call
+			// TODO: only allowing 'assignment' expression or higher in function call
+			// because the comma operator is not allowed in function call (can be confused with
+			// parameter seperator comma). To be disallowed with resolver.
 			arg, err := p.assignment()
 			if err != nil {
 				return nil, err
@@ -590,9 +592,9 @@ func (p *Parser) primary() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		return nil, NewParseError(tok, "Expect left operand.")
+		return nil, p.er.ParseError(tok, "Expect left operand.")
 	default:
-		return nil, NewParseError(tok, "Expect an expression.")
+		return nil, p.er.ParseError(tok, "Expect an expression.")
 	}
 }
 
@@ -615,7 +617,7 @@ func (p *Parser) synchronize() {
 // Returns the consumed token if matched, or a ParseError otherwise.
 func (p *Parser) consume(expected tokenType, errMsg string) (token, error) {
 	if p.peek().tokenType != expected {
-		return token{}, NewParseError(p.peek(), errMsg)
+		return token{}, p.er.ParseError(p.peek(), errMsg)
 	}
 	out, err := p.advance()
 	if err != nil {

@@ -37,16 +37,16 @@ func TestResolve(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			scanner := NewScanner([]byte(tt.input))
+			scanner := NewScanner(nil, []byte(tt.input))
 			tokens, err := scanner.ScanTokens()
 			assert.NoError(t, err)
 
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			stmts, err := parser.Parse()
 			assert.NoError(t, err)
 
-			interpreter := NewInterpreter()
-			resolver := NewResolver(interpreter)
+			interpreter := NewInterpreter(nil)
+			resolver := NewResolver(nil, interpreter)
 
 			err = resolver.Resolve(stmts)
 			assert.NoError(t, err)

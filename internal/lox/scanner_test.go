@@ -70,12 +70,12 @@ func Test_scanToken(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner(tC.input)
+			scanner := NewScanner(nil, tC.input)
 			err := scanner.scanToken()
 			if err != nil {
 				t.Error(err)
 			}
-			assert.Equal(t, tC.want, scanner.Tokens)
+			assert.Equal(t, tC.want, scanner.tokens)
 		})
 	}
 }
@@ -124,7 +124,7 @@ func TestScanTokens(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner(tC.input)
+			scanner := NewScanner(nil, tC.input)
 			got, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)

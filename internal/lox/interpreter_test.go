@@ -41,17 +41,17 @@ func Test_interpretLiteralExpr(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			expr, err := parser.expression()
 			if err != nil {
 				t.Fatal(err)
 			}
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			got, err := interpreter.visitLiteralExpr(expr.(literalExpr))
 			assert.Equal(t, tC.want, got)
 			assert.Equal(t, tC.err, err)
@@ -112,17 +112,17 @@ func Test_interpretUnaryExpr(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			expr, err := parser.expression()
 			if err != nil {
 				t.Fatal(err)
 			}
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			got, err := interpreter.visitUnaryExpr(expr.(unaryExpr))
 			assert.Equal(t, tC.want, got)
 			if err != nil {
@@ -269,17 +269,17 @@ func Test_interpretBinaryExpr(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			expr, err := parser.expression()
 			if err != nil {
 				t.Fatal(err)
 			}
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			got, err := interpreter.visitBinaryExpr(expr.(binaryExpr))
 			assert.Equal(t, tC.want, got)
 			if err != nil {
@@ -323,18 +323,18 @@ func Test_interpretVariableExpr(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			expr, err := parser.expression()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			for k, v := range tC.initEnv {
 				interpreter.env.define(k, v)
 			}
@@ -396,18 +396,18 @@ func Test_interpretAssignExpr(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			expr, err := parser.expression()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			for k, v := range tC.initEnv {
 				interpreter.env.define(k, v)
 			}
@@ -482,19 +482,19 @@ func Test_interpretLogicalExpr(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
 
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			expr, err := parser.expression()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			got, err := interpreter.visitLogicalExpr(expr.(logicalExpr))
 			assert.Equal(t, tC.want, got)
 			if tC.wantErr != nil {
@@ -506,7 +506,6 @@ func Test_interpretLogicalExpr(t *testing.T) {
 	}
 }
 
-// TODO: this probably needs to run through resolver
 func Test_interpretCallExpr(t *testing.T) {
 	testCases := []struct {
 		desc    string
@@ -558,26 +557,26 @@ func Test_interpretCallExpr(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
 
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			for k, v := range tC.initEnv {
 				interpreter.env.define(k, v)
 			}
 
 			// Parse and execute function declaration if present
 			if tC.code != "" {
-				scanner := NewScanner([]byte(tC.code))
+				scanner := NewScanner(nil, []byte(tC.code))
 				tokens, err := scanner.ScanTokens()
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				parser := NewParser(tokens)
+				parser := NewParser(nil, tokens)
 				stmts, err := parser.Parse()
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				resolver := NewResolver(interpreter)
+				resolver := NewResolver(nil, interpreter)
 				err = resolver.Resolve(stmts)
 				if err != nil {
 					t.Fatal(err)
@@ -592,19 +591,19 @@ func Test_interpretCallExpr(t *testing.T) {
 			}
 
 			// Parse and execute function call
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			expr, err := parser.expression()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			resolver := NewResolver(interpreter)
+			resolver := NewResolver(nil, interpreter)
 			_, err = resolver.resolveExpr(expr)
 			if err != nil {
 				t.Fatal(err)
@@ -655,18 +654,18 @@ func Test_interpretVarStmt(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			stmts, err := parser.Parse()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			err = interpreter.visitVarStmt(stmts[0].(varStmt))
 
 			if err != nil {
@@ -724,18 +723,18 @@ func Test_interpretBlockStmt(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			stmts, err := parser.Parse()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			for k, v := range tC.initEnv {
 				interpreter.env.define(k, v)
 			}
@@ -804,18 +803,18 @@ func Test_interpretReturnStmt(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			stmt, err := parser.statement()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			for k, v := range tC.initEnv {
 				interpreter.env.define(k, v)
 			}
@@ -866,18 +865,18 @@ func Test_interpretWhileStmt(t *testing.T) {
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			stmt, err := parser.statement()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			for k, v := range tC.initEnv {
 				interpreter.env.define(k, v)
 			}
@@ -945,19 +944,19 @@ func Test_interpretIfStmt(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
 
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			stmts, err := parser.Parse()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			for k, v := range tC.initEnv {
 				interpreter.env.define(k, v)
 			}
@@ -1025,19 +1024,19 @@ func Test_interpretFunctionStmt(t *testing.T) {
 		t.Run(tC.desc, func(t *testing.T) {
 			t.Parallel()
 
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			stmts, err := parser.Parse()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			interpreter := NewInterpreter()
+			interpreter := NewInterpreter(nil)
 			for k, v := range tC.initEnv {
 				interpreter.env.define(k, v)
 			}

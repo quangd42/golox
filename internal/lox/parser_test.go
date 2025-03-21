@@ -30,12 +30,12 @@ func Test_primary(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			got, err := parser.primary()
 			if err != nil {
 				t.Error(err)
@@ -78,12 +78,12 @@ func Test_unary(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			got, err := parser.unary()
 			if err != nil {
 				t.Error(err)
@@ -129,12 +129,12 @@ func Test_factor(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			got, err := parser.factor()
 			if err != nil {
 				t.Error(err)
@@ -197,12 +197,12 @@ func Test_term(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			got, err := parser.term()
 			if err != nil {
 				t.Error(err)
@@ -258,12 +258,12 @@ func Test_comparison(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			got, err := parser.comparison()
 			if err != nil {
 				t.Error(err)
@@ -309,12 +309,12 @@ func Test_equality(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			got, err := parser.equality()
 			if err != nil {
 				t.Error(err)
@@ -402,12 +402,12 @@ func Test_ternary(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			got, err := parser.ternary()
 			if err != nil {
 				t.Error(err)
@@ -461,12 +461,12 @@ func Test_or(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			got, err := parser.or()
 			if err != nil {
 				t.Error(err)
@@ -520,12 +520,12 @@ func Test_and(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			scanner := NewScanner(nil, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(nil, tokens)
 			got, err := parser.and()
 			if err != nil {
 				t.Error(err)
@@ -582,12 +582,13 @@ func Test_assignment(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.assignment()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -701,12 +702,13 @@ func Test_call(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.call()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -815,12 +817,13 @@ func Test_expression(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.expression()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -862,12 +865,13 @@ func Test_printStmt(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -899,12 +903,13 @@ func Test_exprStmt(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -974,12 +979,13 @@ func Test_blockStmt(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1063,12 +1069,13 @@ func Test_ifStmt(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1135,12 +1142,13 @@ func Test_whileStmt(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1301,12 +1309,13 @@ func Test_forStatement(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.statement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1360,12 +1369,13 @@ func Test_declaration(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.declaration()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1460,12 +1470,13 @@ func Test_function(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.function("function")
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1520,12 +1531,13 @@ func Test_returnStatement(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.returnStatement()
 			if err != nil {
 				assert.Equal(t, tC.err, err)
@@ -1602,12 +1614,13 @@ func Test_Parse(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner([]byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.Parse()
 			if err != nil {
 				assert.Equal(t, tC.err, err)

@@ -4,37 +4,52 @@ import (
 	"fmt"
 )
 
-type BaseError struct {
-	Line  int
-	Msg   string
-	Where string
+type ErrorReporter interface {
+	report(line int, where, msg string)
+	HadError() bool
+	HadRuntimeError() bool
+	ResetError()
+	ResetRuntimeError()
+	ScanError(line int, msg string)
+	ParseError(token token, msg string) ParseError
+	RuntimeError(e RuntimeError)
 }
 
-func (e *BaseError) Error() string {
-	if e.Where == "" {
-		return fmt.Sprintf("[line %d] Error: %s", e.Line, e.Msg)
+type LoxErrorReporter struct {
+	hadError        bool
+	hadRuntimeError bool
+}
+
+func NewLoxErrorReporter() *LoxErrorReporter {
+	return &LoxErrorReporter{}
+}
+
+func (l *LoxErrorReporter) report(line int, where, msg string) {
+	fmt.Printf("[line %d] Error%s: %s\n", line, where, msg)
+	l.hadError = true
+}
+
+func (l *LoxErrorReporter) ScanError(line int, msg string) {
+	l.report(line, "", msg)
+}
+
+func (l *LoxErrorReporter) HadError() bool {
+	return l.hadError
+}
+
+func (l *LoxErrorReporter) ResetError() {
+	l.hadError = false
+}
+
+func (l *LoxErrorReporter) ParseError(token token, msg string) ParseError {
+	switch token.tokenType {
+	case EOF:
+		l.report(token.line, " at end", msg)
+	default:
+		l.report(token.line, fmt.Sprintf(" at '%s'", token.lexeme), msg)
 	}
-	return fmt.Sprintf("[line %d] Error at '%s': %s", e.Line, e.Where, e.Msg)
-}
 
-func NewBaseError(line int, where, msg string) error {
-	return &BaseError{
-		Line:  line,
-		Msg:   msg,
-		Where: where,
-	}
-}
-
-func errUnsupportedCharacter(line int, c rune) error {
-	return NewBaseError(line, string(c), "unsupported character")
-}
-
-func errUnterminatedString(line int) error {
-	return NewBaseError(line, "", "unterminated string")
-}
-
-func errInvalidNumber(line int, lex string) error {
-	return NewBaseError(line, lex, "invalid number")
+	return ParseError{Token: token, Msg: msg}
 }
 
 type ParseError struct {
@@ -42,7 +57,11 @@ type ParseError struct {
 	Msg   string
 }
 
-func (e *ParseError) Error() string {
+func NewParseError(token token, msg string) ParseError {
+	return ParseError{token, msg}
+}
+
+func (e ParseError) Error() string {
 	switch e.Token.tokenType {
 	case EOF:
 		return fmt.Sprintf("[line %d] Error at end: %s", e.Token.line, e.Msg)
@@ -51,19 +70,28 @@ func (e *ParseError) Error() string {
 	}
 }
 
-func NewParseError(t token, msg string) error {
-	return &ParseError{Token: t, Msg: msg}
-}
-
 type RuntimeError struct {
 	Token token
 	Msg   string
 }
 
-func (e *RuntimeError) Error() string {
-	return fmt.Sprintf("%s\n[line %d] at '%s'", e.Msg, e.Token.line, e.Token.lexeme)
+func NewRuntimeError(token token, msg string) RuntimeError {
+	return RuntimeError{token, msg}
 }
 
-func NewRuntimeError(t token, msg string) error {
-	return &RuntimeError{Token: t, Msg: msg}
+func (e RuntimeError) Error() string {
+	return fmt.Sprintf("[line %d] Runtime Error at '%s': %s", e.Token.line, e.Token.lexeme, e.Msg)
+}
+
+func (l *LoxErrorReporter) RuntimeError(err RuntimeError) {
+	l.hadRuntimeError = true
+	fmt.Println(err.Error())
+}
+
+func (l *LoxErrorReporter) HadRuntimeError() bool {
+	return l.hadRuntimeError
+}
+
+func (l *LoxErrorReporter) ResetRuntimeError() {
+	l.hadRuntimeError = false
 }
