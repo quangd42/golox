@@ -8,9 +8,9 @@ import (
 type fnType string
 
 const (
-	fnTypeNone     fnType = "none"
-	fnTypeFunction fnType = "function"
-	fnTypeMethod   fnType = "method"
+	NONE     fnType = "none"
+	FUNCTION fnType = "function"
+	METHOD   fnType = "method"
 )
 
 type function struct {

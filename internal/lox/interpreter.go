@@ -8,22 +8,20 @@ import (
 )
 
 type Interpreter struct {
-	er        ErrorReporter
-	globals   *environment
-	locals    map[expr]int
-	env       *environment
-	currentFn fnType
+	er      ErrorReporter
+	globals *environment
+	locals  map[expr]int
+	env     *environment
 }
 
 func NewInterpreter(er ErrorReporter) *Interpreter {
 	globals := NewGlobalEnvironment()
 	defineClockFn(globals)
 	return &Interpreter{
-		er:        er,
-		globals:   globals,
-		locals:    make(map[expr]int, 0),
-		env:       globals,
-		currentFn: fnTypeNone,
+		er:      er,
+		globals: globals,
+		locals:  make(map[expr]int, 0),
+		env:     globals,
 	}
 }
 

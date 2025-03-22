@@ -4,6 +4,7 @@ type Resolver struct {
 	errorReporter ErrorReporter
 	interpreter   *Interpreter
 	scopes        *scopeStack
+	currentFn     fnType
 }
 
 func NewResolver(er ErrorReporter, i *Interpreter) *Resolver {
@@ -11,6 +12,7 @@ func NewResolver(er ErrorReporter, i *Interpreter) *Resolver {
 		errorReporter: er,
 		interpreter:   i,
 		scopes:        newScopeStack(),
+		currentFn:     NONE,
 	}
 }
 
@@ -33,7 +35,12 @@ func (r *Resolver) resolveStmt(s stmt) error {
 	return s.accept(r)
 }
 
-func (r *Resolver) resolveFunction(s functionStmt) error {
+func (r *Resolver) resolveFunction(s functionStmt, ft fnType) error {
+	enclosingFn := r.currentFn
+	r.currentFn = ft
+	defer func(r *Resolver) {
+		r.currentFn = enclosingFn
+	}(r)
 	r.beginScope()
 	defer r.endScope()
 	for _, param := range s.params {
@@ -135,7 +142,7 @@ func (r *Resolver) visitExprStmt(s exprStmt) error {
 func (r *Resolver) visitFunctionStmt(s functionStmt) error {
 	r.declare(s.name)
 	r.define(s.name)
-	return r.resolveFunction(s)
+	return r.resolveFunction(s, FUNCTION)
 }
 
 func (r *Resolver) visitIfStmt(s ifStmt) error {
@@ -153,6 +160,9 @@ func (r *Resolver) visitPrintStmt(s printStmt) error {
 }
 
 func (r *Resolver) visitReturnStmt(s returnStmt) error {
+	if r.currentFn == NONE {
+		r.errorReporter.ParseError(s.keyword, "Can't return from top-level code.")
+	}
 	if s.value != nil {
 		r.resolveExpr(s.value)
 	}

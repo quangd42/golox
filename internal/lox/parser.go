@@ -38,7 +38,7 @@ func (p *Parser) declaration() (out stmt, err error) {
 	case p.match(VAR):
 		out, err = p.varDecl()
 	case p.match(FN):
-		out, err = p.function(fnTypeFunction)
+		out, err = p.function(FUNCTION)
 	default:
 		out, err = p.statement()
 	}
@@ -54,7 +54,7 @@ func (p *Parser) declaration() (out stmt, err error) {
 // function → IDENTIFIER "(" parameters? ")" block ;
 func (p *Parser) function(ft fnType) (stmt, error) {
 	var tt tokenType
-	if ft == fnTypeFunction {
+	if ft == FUNCTION {
 		tt = FN
 	}
 	_, err := p.consume(tt, fmt.Sprintf("Expect '%s' at the beginning of %s declaration.", tt, ft))
