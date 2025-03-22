@@ -379,7 +379,7 @@ func (i *Interpreter) visitExprStmt(s exprStmt) error {
 }
 
 func (i *Interpreter) visitFunctionStmt(s functionStmt) error {
-	i.env.define(s.name.lexeme, newFunction(s, i.env))
+	i.env.define(s.name.lexeme, newFunction(s, i.env, false))
 	return nil
 }
 
@@ -444,7 +444,7 @@ func (i *Interpreter) visitClassStmt(s classStmt) error {
 	i.env.define(s.name.lexeme, nil)
 	methods := make(map[string]function, len(s.methods))
 	for _, m := range s.methods {
-		methods[m.name.lexeme] = newFunction(m, i.env)
+		methods[m.name.lexeme] = newFunction(m, i.env, m.name.lexeme == "init")
 	}
 	i.env.assign(s.name, newClass(s.name.lexeme, methods))
 	return nil

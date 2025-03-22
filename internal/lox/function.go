@@ -8,20 +8,23 @@ import (
 type fnType string
 
 const (
-	fnTypeNONE     fnType = "none"
-	fnTypeFUNCTION fnType = "function"
-	fnTypeMETHOD   fnType = "method"
+	fnTypeNONE        fnType = "none"
+	fnTypeFUNCTION    fnType = "function"
+	fnTypeMETHOD      fnType = "method"
+	fnTypeINITIALIZER fnType = "isInitializer"
 )
 
 type function struct {
-	declaration functionStmt
-	closure     *environment
+	declaration   functionStmt
+	closure       *environment
+	isInitializer bool
 }
 
-func newFunction(stmt functionStmt, closure *environment) function {
+func newFunction(stmt functionStmt, closure *environment, isInitializer bool) function {
 	return function{
-		declaration: stmt,
-		closure:     closure,
+		declaration:   stmt,
+		closure:       closure,
+		isInitializer: isInitializer,
 	}
 }
 
@@ -34,9 +37,15 @@ func (f function) call(i *Interpreter, args []any) (any, error) {
 	if err != nil {
 		var retVal *returnValue
 		if errors.As(err, &retVal) {
+			if f.isInitializer { // Returned value in initializer is overiden to 'this'
+				return f.closure.getAt(0, newTokenNoLiteralType(THIS, 0, 0))
+			}
 			return retVal.value, nil
 		}
 		return nil, err
+	}
+	if f.isInitializer { // Early return in initializer should return 'this'
+		return f.closure.getAt(0, newTokenNoLiteralType(THIS, 0, 0))
 	}
 	return nil, nil
 }
@@ -48,7 +57,7 @@ func (f function) arity() int {
 func (f function) bind(i instance) function {
 	env := newEnvironment(f.closure)
 	env.define("this", i)
-	return newFunction(f.declaration, env)
+	return newFunction(f.declaration, env, f.isInitializer)
 }
 
 func (f function) String() string {

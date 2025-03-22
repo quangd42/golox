@@ -1,0 +1,8 @@
+class Foo {
+  init() {
+    print this;
+  }
+}
+
+var foo = Foo(); // Expect print "Foo instance" once
+print foo.init(); // Expect print "Foo instance" twice, once from .init() and once from print statement.

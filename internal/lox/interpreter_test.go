@@ -551,6 +551,22 @@ func Test_interpretCallExpr(t *testing.T) {
 			want:    nil,
 			err:     NewRuntimeError(newToken(RIGHT_PAREN, ")", nil, 1, 11), "Expected 1 arguments but got 2."),
 		},
+		{
+			desc:  "create_instance_and_call_method",
+			input: "test().getValue()",
+			code: `fn test() {
+						class Test {
+							getValue() {
+								return 42;
+							}
+						}
+						return Test();
+					}
+					`,
+			initEnv: map[string]any{},
+			want:    42,
+			err:     nil,
+		},
 	}
 
 	for _, tC := range testCases {
@@ -615,6 +631,119 @@ func Test_interpretCallExpr(t *testing.T) {
 				assert.EqualError(t, err, tC.err.Error())
 			} else {
 				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_interpretCallExpr_ClassConstructor(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		input   string
+		code    string
+		want    any
+		wantErr error
+	}{
+		{
+			desc:  "this_binding_in_method",
+			input: "instance.getValue()",
+			code: `class Test {
+    init() {
+     this.value = 42;
+    }
+    getValue() {
+     return this.value;
+    }
+   }
+   var instance = Test();
+   `,
+			want:    42,
+			wantErr: nil,
+		},
+		{
+			desc:  "multiple_methods_this_binding",
+			input: "instance.getSum()",
+			code: `class Test {
+    init() {
+     this.x = 10;
+     this.y = 20;
+    }
+    getX() {
+     return this.x;
+    }
+    getY() {
+     return this.y;
+    }
+    getSum() {
+     return this.getX() + this.getY();
+    }
+   }
+   var instance = Test();
+   `,
+			want:    30.0,
+			wantErr: nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			t.Parallel()
+
+			interpreter := NewInterpreter(nil)
+
+			// First execute the class definition
+			if tC.code != "" {
+				scanner := NewScanner(nil, []byte(tC.code))
+				tokens, err := scanner.ScanTokens()
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				parser := NewParser(nil, tokens)
+				stmts, err := parser.Parse()
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				resolver := NewResolver(nil, interpreter)
+				err = resolver.Resolve(stmts)
+				if err != nil {
+					t.Fatal(err)
+				}
+
+				for _, stmt := range stmts {
+					err = interpreter.execute(stmt)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+
+			// Then execute the test expression
+			scanner := NewScanner(nil, []byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			parser := NewParser(nil, tokens)
+			expr, err := parser.expression()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			resolver := NewResolver(nil, interpreter)
+			_, err = resolver.resolveExpr(expr)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			got, err := interpreter.evaluate(expr)
+			if tC.wantErr != nil {
+				assert.EqualError(t, err, tC.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tC.want, got)
 			}
 		})
 	}
@@ -1054,6 +1183,7 @@ func Test_interpretFunctionStmt(t *testing.T) {
 		})
 	}
 }
+
 func Test_interpretClassStmt(t *testing.T) {
 	testCases := []struct {
 		desc    string

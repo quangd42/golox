@@ -185,6 +185,9 @@ func (r *Resolver) visitReturnStmt(s returnStmt) error {
 		r.errorReporter.ParseError(s.keyword, "Can't return from top-level code.")
 	}
 	if s.value != nil {
+		if r.currentFn == fnTypeINITIALIZER {
+			r.errorReporter.ParseError(s.keyword, "Can't return value from an initializer.")
+		}
 		r.resolveExpr(s.value)
 	}
 	return nil
@@ -224,8 +227,12 @@ func (r *Resolver) visitClassStmt(s classStmt) error {
 	defer r.endScope()
 	currentScope, _ := r.scopes.peek() // after begining a scope this cannot fail
 	currentScope["this"] = true
-	for _, stmt := range s.methods {
-		r.resolveFunction(stmt, fnTypeMETHOD)
+	for _, method := range s.methods {
+		methodType := fnTypeMETHOD
+		if method.name.lexeme == "init" {
+			methodType = fnTypeINITIALIZER
+		}
+		r.resolveFunction(method, methodType)
 	}
 	return nil
 }

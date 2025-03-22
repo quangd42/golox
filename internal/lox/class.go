@@ -20,10 +20,18 @@ func newClass(name string, methods map[string]function) class {
 }
 
 func (c class) call(i *Interpreter, args []any) (any, error) {
-	return newInstance(c), nil
+	instance := newInstance(c)
+	if initializer, ok := c.methods["init"]; ok {
+		// discard returned values from initializer when creating new a instance
+		initializer.bind(instance).call(i, args)
+	}
+	return instance, nil
 }
 
 func (c class) arity() int {
+	if initializer, ok := c.methods["init"]; ok {
+		return initializer.arity()
+	}
 	return 0
 }
 
