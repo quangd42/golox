@@ -362,7 +362,7 @@ func (p *Parser) expression() (expr, error) {
 	return out, nil
 }
 
-// assignment → IDENTIFIER "=" assignment | logic_or ;
+// assignment → ( call "." )? IDENTIFIER "=" assignment | logic_or ;
 func (p *Parser) assignment() (expr, error) {
 	out, err := p.or()
 	if err != nil {
@@ -374,11 +374,13 @@ func (p *Parser) assignment() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		varExpr, ok := out.(variableExpr)
-		if !ok {
+		if varExpr, ok := out.(variableExpr); ok {
+			out = assignExpr{name: varExpr.name, value: val}
+		} else if getExpr, ok := out.(getExpr); ok {
+			out = setExpr{object: getExpr.object, name: getExpr.name, value: val}
+		} else {
 			return nil, p.er.ParseError(tok, "Invalid assignment target.")
 		}
-		out = assignExpr{name: varExpr.name, value: val}
 	}
 	return out, nil
 }
@@ -540,17 +542,28 @@ func (p *Parser) unary() (expr, error) {
 	return p.call()
 }
 
-// call → primary ( "(" arguments? ")" )* ;
+// call → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 // arguments → expression ( "," expression )* ;
 func (p *Parser) call() (expr, error) {
 	out, err := p.primary()
 	if err != nil {
 		return nil, err
 	}
-	for p.match(LEFT_PAREN) {
-		out, err = p.finishCall(out)
-		if err != nil {
-			return nil, err
+	for {
+		if p.match(LEFT_PAREN) {
+			out, err = p.finishCall(out)
+			if err != nil {
+				return nil, err
+			}
+		} else if p.match(DOT) {
+			p.advance()
+			name, err := p.consume(IDENTIFIER, "Expect property name after '.'.")
+			if err != nil {
+				return nil, err
+			}
+			out = getExpr{object: out, name: name}
+		} else {
+			break
 		}
 	}
 	return out, nil
@@ -582,7 +595,6 @@ func (p *Parser) finishCall(callee expr) (expr, error) {
 			}
 		}
 	}
-
 	tok, err := p.consume(RIGHT_PAREN, "Expect ')' after arguments.")
 	if err != nil {
 		return nil, err

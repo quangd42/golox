@@ -298,6 +298,38 @@ func (i *Interpreter) visitCallExpr(e callExpr) (any, error) {
 	return function.call(i, args)
 }
 
+func (i *Interpreter) visitGetExpr(e getExpr) (any, error) {
+	object, err := i.evaluate(e.object)
+	if err != nil {
+		return nil, err
+	}
+	instance, ok := object.(instance)
+	if !ok {
+		return nil, NewRuntimeError(e.name, "Only instances have properties.")
+	}
+	if val, ok := instance.fields[e.name.lexeme]; ok {
+		return val, nil
+	}
+	return nil, NewRuntimeError(e.name, fmt.Sprintf("Undefined properties '%s'", e.name.lexeme))
+}
+
+func (i *Interpreter) visitSetExpr(e setExpr) (any, error) {
+	val, err := i.evaluate(e.value)
+	if err != nil {
+		return nil, err
+	}
+	object, err := i.evaluate(e.object)
+	if err != nil {
+		return nil, err
+	}
+	instance, ok := object.(instance)
+	if !ok {
+		return nil, NewRuntimeError(e.name, "Only instances have fields.")
+	}
+	instance.fields[e.name.lexeme] = val
+	return val, nil
+}
+
 func (i *Interpreter) execute(s stmt) error {
 	return s.accept(i)
 }

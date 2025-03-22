@@ -134,6 +134,17 @@ func (r *Resolver) visitAssignExpr(e assignExpr) (any, error) {
 	return nil, nil
 }
 
+func (r *Resolver) visitGetExpr(e getExpr) (any, error) {
+	r.resolveExpr(e.object)
+	return nil, nil
+}
+
+func (r *Resolver) visitSetExpr(e setExpr) (any, error) {
+	r.resolveExpr(e.value)
+	r.resolveExpr(e.object)
+	return nil, nil
+}
+
 func (r *Resolver) visitExprStmt(s exprStmt) error {
 	r.resolveExpr(s.expr)
 	return nil

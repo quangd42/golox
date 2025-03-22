@@ -579,6 +579,46 @@ func Test_assignment(t *testing.T) {
 			want:  nil,
 			err:   NewParseError(newTokenNoLiteralType(EQUAL, 1, 2), "Invalid assignment target."),
 		},
+		{
+			desc:  "instance_property_assignment",
+			input: "instance.property=42",
+			want: setExpr{
+				object: variableExpr{newToken(IDENTIFIER, "instance", "instance", 1, 0)},
+				name:   newToken(IDENTIFIER, "property", "property", 1, 9),
+				value:  literalExpr{42},
+			},
+		},
+		{
+			desc:  "nested_instance_property_assignment",
+			input: "outer.inner.prop=true",
+			want: setExpr{
+				object: getExpr{
+					object: variableExpr{newToken(IDENTIFIER, "outer", "outer", 1, 0)},
+					name:   newToken(IDENTIFIER, "inner", "inner", 1, 6),
+				},
+				name:  newToken(IDENTIFIER, "prop", "prop", 1, 12),
+				value: literalExpr{true},
+			},
+		},
+		{
+			desc:  "nested_property_assignment_with_complex_object",
+			input: "bagel().outer.inner.prop=true",
+			want: setExpr{
+				object: getExpr{
+					object: getExpr{
+						object: callExpr{
+							callee:    variableExpr{newToken(IDENTIFIER, "bagel", "bagel", 1, 0)},
+							paren:     newTokenNoLiteralType(RIGHT_PAREN, 1, 6),
+							arguments: []expr{},
+						},
+						name: newToken(IDENTIFIER, "outer", "outer", 1, 8),
+					},
+					name: newToken(IDENTIFIER, "inner", "inner", 1, 14),
+				},
+				name:  newToken(IDENTIFIER, "prop", "prop", 1, 20),
+				value: literalExpr{true},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -691,6 +731,39 @@ func Test_call(t *testing.T) {
 						right:    literalExpr{4},
 					},
 				},
+			},
+		},
+		{
+			desc:  "instance_property_access",
+			input: "outer.inner.prop",
+			want: getExpr{
+				object: getExpr{
+					object: variableExpr{newToken(IDENTIFIER, "outer", "outer", 1, 0)},
+					name:   newToken(IDENTIFIER, "inner", "inner", 1, 6),
+				},
+				name: newToken(IDENTIFIER, "prop", "prop", 1, 12),
+			},
+		},
+		{
+			desc:  "complex_property_access",
+			input: "first(a, b)().inner.prop",
+			want: getExpr{
+				object: getExpr{
+					object: callExpr{
+						callee: callExpr{
+							callee: variableExpr{newToken(IDENTIFIER, "first", "first", 1, 0)},
+							paren:  newTokenNoLiteralType(RIGHT_PAREN, 1, 10),
+							arguments: []expr{
+								variableExpr{newToken(IDENTIFIER, "a", "a", 1, 6)},
+								variableExpr{newToken(IDENTIFIER, "b", "b", 1, 9)},
+							},
+						},
+						paren:     newTokenNoLiteralType(RIGHT_PAREN, 1, 12),
+						arguments: []expr{},
+					},
+					name: newToken(IDENTIFIER, "inner", "inner", 1, 14),
+				},
+				name: newToken(IDENTIFIER, "prop", "prop", 1, 20),
 			},
 		},
 		{

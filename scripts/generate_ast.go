@@ -13,9 +13,11 @@ import (
 var ExprTypes = []string{
 	"Binary: left expr, operator token, right expr",
 	"Call: callee expr, paren token, arguments []expr",
+	"Get: object expr, name token",
 	"Grouping: expr expr",
 	"Literal: value any",
 	"Logical: left expr, operator token, right expr",
+	"Set: object expr, name token, value expr",
 	"Unary: operator token, right expr",
 	"Variable: name token",
 	"Assign: name token, value expr",
