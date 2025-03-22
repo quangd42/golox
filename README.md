@@ -1,5 +1,5 @@
 # Lox Interpreter
-Interpreter for the Lox language [Crafting Interpreters](https://craftinginterpreters.com) written in Go.
+Interpreter for the Lox language from [Crafting Interpreters](https://craftinginterpreters.com), implemented in Go.
 
 ---
 
@@ -19,9 +19,10 @@ Interpreter for the Lox language [Crafting Interpreters](https://craftinginterpr
   - [ ] `continue` and `break`
 - [x] Variables
 - [x] Functions
-   - [ ] Closures
+   - [x] Closures
    - [ ] Anonymous functions
-- [ ] Classes
+- [x] Classes
+   - [ ] Inheritance
 - [ ] Standard Library
 
 Differences from the book:
