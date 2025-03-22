@@ -309,6 +309,8 @@ func (i *Interpreter) visitGetExpr(e getExpr) (any, error) {
 	}
 	if val, ok := instance.fields[e.name.lexeme]; ok {
 		return val, nil
+	} else if method, ok := instance.class.methods[e.name.lexeme]; ok {
+		return method, nil
 	}
 	return nil, NewRuntimeError(e.name, fmt.Sprintf("Undefined properties '%s'", e.name.lexeme))
 }
@@ -434,7 +436,11 @@ func (i *Interpreter) visitClassStmt(s classStmt) error {
 	// two-stage variable binding process allows references to the class
 	// inside its own methods
 	i.env.define(s.name.lexeme, nil)
-	i.env.assign(s.name, newClass(s.name.lexeme))
+	methods := make(map[string]function, len(s.methods))
+	for _, m := range s.methods {
+		methods[m.name.lexeme] = newFunction(m, i.env)
+	}
+	i.env.assign(s.name, newClass(s.name.lexeme, methods))
 	return nil
 }
 

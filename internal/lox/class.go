@@ -1,11 +1,15 @@
 package lox
 
 type class struct {
-	name string
+	name    string
+	methods map[string]function
 }
 
-func newClass(name string) class {
-	return class{name}
+func newClass(name string, methods map[string]function) class {
+	return class{
+		name:    name,
+		methods: methods,
+	}
 }
 
 func (c class) call(i *Interpreter, args []any) (any, error) {
