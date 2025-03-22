@@ -189,3 +189,12 @@ func (r *Resolver) visitBlockStmt(s blockStmt) error {
 	defer r.endScope()
 	return r.resolveStmtList(s.statements)
 }
+
+func (r *Resolver) visitClassStmt(s classStmt) error {
+	r.declare(s.name)
+	r.define(s.name)
+	for _, stmt := range s.methods {
+		r.resolveFunction(stmt, METHOD)
+	}
+	return nil
+}

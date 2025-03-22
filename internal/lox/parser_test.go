@@ -1548,6 +1548,75 @@ func Test_returnStatement(t *testing.T) {
 	}
 }
 
+func Test_classDecl(t *testing.T) {
+	testCases := []struct {
+		desc  string
+		input string
+		want  stmt
+		err   error
+	}{
+		{
+			desc:  "simple_class",
+			input: "class Example {}",
+			want: classStmt{
+				name:    newToken(IDENTIFIER, "Example", "Example", 1, 6),
+				methods: []functionStmt{},
+			},
+		},
+		{
+			desc:  "class_with_method",
+			input: "class Example { method() {print \"hello\";} }",
+			want: classStmt{
+				name: newToken(IDENTIFIER, "Example", "Example", 1, 6),
+				methods: []functionStmt{
+					{
+						name:   newToken(IDENTIFIER, "method", "method", 1, 16),
+						params: []token{},
+						body: []stmt{
+							printStmt{expr: literalExpr{"hello"}},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:  "missing_class_name",
+			input: "class {}",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(LEFT_BRACE, 1, 6), "Expect class name."),
+		},
+		{
+			desc:  "missing_left_brace",
+			input: "class Example",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(EOF, 1, 13), "Expect '{' before class body."),
+		},
+		{
+			desc:  "missing_right_brace",
+			input: "class Example {",
+			want:  nil,
+			err:   NewParseError(newTokenNoLiteralType(EOF, 1, 15), "Expect '}' after class body."),
+		},
+	}
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Error(err)
+			}
+			parser := NewParser(er, tokens)
+			got, err := parser.classDecl()
+			if err != nil {
+				assert.Equal(t, tC.err, err)
+				return
+			}
+			assert.Equal(t, tC.want, got)
+		})
+	}
+}
+
 func Test_Parse(t *testing.T) {
 	testCases := []struct {
 		desc  string

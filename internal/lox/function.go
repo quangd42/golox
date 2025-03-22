@@ -18,7 +18,7 @@ type function struct {
 	closure     *environment
 }
 
-func NewFunction(stmt functionStmt, closure *environment) function {
+func newFunction(stmt functionStmt, closure *environment) function {
 	return function{
 		declaration: stmt,
 		closure:     closure,
@@ -26,7 +26,7 @@ func NewFunction(stmt functionStmt, closure *environment) function {
 }
 
 func (f function) call(i *Interpreter, args []any) (any, error) {
-	env := NewEnvironment(f.closure)
+	env := newEnvironment(f.closure)
 	for idx, param := range f.declaration.params {
 		env.define(param.lexeme, args[idx])
 	}

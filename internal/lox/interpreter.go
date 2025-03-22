@@ -15,7 +15,7 @@ type Interpreter struct {
 }
 
 func NewInterpreter(er ErrorReporter) *Interpreter {
-	globals := NewGlobalEnvironment()
+	globals := newGlobalEnvironment()
 	defineClockFn(globals)
 	return &Interpreter{
 		er:      er,
@@ -305,9 +305,9 @@ func (i *Interpreter) execute(s stmt) error {
 func (i *Interpreter) executeBlock(s blockStmt, blockEnv *environment) error {
 	prevEnv := i.env
 	i.env = blockEnv
-	defer func() {
+	defer func(i *Interpreter) {
 		i.env = prevEnv
-	}()
+	}(i)
 	for _, stmt := range s.statements {
 		err := i.execute(stmt)
 		if err != nil {
@@ -339,7 +339,7 @@ func (i *Interpreter) visitExprStmt(s exprStmt) error {
 }
 
 func (i *Interpreter) visitFunctionStmt(s functionStmt) error {
-	i.env.define(s.name.lexeme, NewFunction(s, i.env))
+	i.env.define(s.name.lexeme, newFunction(s, i.env))
 	return nil
 }
 
@@ -395,7 +395,15 @@ func (i *Interpreter) visitWhileStmt(s whileStmt) error {
 }
 
 func (i *Interpreter) visitBlockStmt(s blockStmt) error {
-	return i.executeBlock(s, NewEnvironment(i.env))
+	return i.executeBlock(s, newEnvironment(i.env))
+}
+
+func (i *Interpreter) visitClassStmt(s classStmt) error {
+	// two-stage variable binding process allows references to the class
+	// inside its own methods
+	i.env.define(s.name.lexeme, nil)
+	i.env.assign(s.name, newClass(s.name.lexeme))
+	return nil
 }
 
 func defineClockFn(env *environment) {

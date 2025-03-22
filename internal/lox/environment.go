@@ -10,15 +10,15 @@ type environment struct {
 	enclosing *environment
 }
 
-func NewEnvironment(enclosing *environment) *environment {
+func newEnvironment(enclosing *environment) *environment {
 	return &environment{
 		values:    make(map[string]any, 0),
 		enclosing: enclosing,
 	}
 }
 
-func NewGlobalEnvironment() *environment {
-	return NewEnvironment(nil)
+func newGlobalEnvironment() *environment {
+	return newEnvironment(nil)
 }
 
 func (e *environment) define(varName string, value any) {

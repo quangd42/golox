@@ -30,6 +30,7 @@ var StmtTypes = []string{
 	"Var: name token, initializer expr",
 	"While: condition expr, body stmt",
 	"Block: statements []stmt",
+	"Class: name token, methods []functionStmt",
 }
 
 func main() {

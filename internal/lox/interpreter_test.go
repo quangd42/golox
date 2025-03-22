@@ -1054,3 +1054,77 @@ func Test_interpretFunctionStmt(t *testing.T) {
 		})
 	}
 }
+func Test_interpretClassStmt(t *testing.T) {
+	testCases := []struct {
+		desc    string
+		input   string
+		initEnv map[string]any
+		err     error
+	}{
+		{
+			desc:    "basic_class_declaration",
+			input:   `class Test {}`,
+			initEnv: map[string]any{},
+			err:     nil,
+		},
+		{
+			desc: "class_with_methods",
+			input: `class Test {
+    method() {}
+    anotherMethod() {}
+   }`,
+			initEnv: map[string]any{},
+			err:     nil,
+		},
+		{
+			desc:    "redefined_class",
+			input:   `class Existing {}`,
+			initEnv: map[string]any{"Existing": "some_value"},
+			err:     nil,
+		},
+		{
+			desc: "class_with_method_return",
+			input: `class Test {
+    method() {
+     return "test";
+    }
+   }`,
+			initEnv: map[string]any{},
+			err:     nil,
+		},
+	}
+
+	for _, tC := range testCases {
+		t.Run(tC.desc, func(t *testing.T) {
+			t.Parallel()
+
+			scanner := NewScanner(nil, []byte(tC.input))
+			tokens, err := scanner.ScanTokens()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			parser := NewParser(nil, tokens)
+			stmts, err := parser.Parse()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			interpreter := NewInterpreter(nil)
+			for k, v := range tC.initEnv {
+				interpreter.env.define(k, v)
+			}
+
+			err = interpreter.visitClassStmt(stmts[0].(classStmt))
+			if tC.err != nil {
+				assert.EqualError(t, err, tC.err.Error())
+			} else {
+				assert.NoError(t, err)
+				val, exists := interpreter.env.values[stmts[0].(classStmt).name.lexeme]
+				assert.True(t, exists)
+				_, ok := val.(class)
+				assert.True(t, ok)
+			}
+		})
+	}
+}

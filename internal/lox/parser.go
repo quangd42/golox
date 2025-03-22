@@ -32,9 +32,11 @@ func (p *Parser) Parse() ([]stmt, error) {
 	return out, nil
 }
 
-// declaration → fnDecl | varDecl | statement ;
+// declaration → classDecl | fnDecl | varDecl | statement ;
 func (p *Parser) declaration() (out stmt, err error) {
 	switch {
+	case p.match(CLASS):
+		out, err = p.classDecl()
 	case p.match(VAR):
 		out, err = p.varDecl()
 	case p.match(FN):
@@ -42,7 +44,7 @@ func (p *Parser) declaration() (out stmt, err error) {
 	default:
 		out, err = p.statement()
 	}
-	// print error and synchronize at statement level
+	// synchronize at statement level
 	if err != nil {
 		p.synchronize()
 		return nil, err
@@ -50,34 +52,61 @@ func (p *Parser) declaration() (out stmt, err error) {
 	return out, nil
 }
 
-// fnDecl → "fn" function ;
-// function → IDENTIFIER "(" parameters? ")" block ;
-func (p *Parser) function(ft fnType) (stmt, error) {
-	var tt tokenType
-	if ft == FUNCTION {
-		tt = FN
-	}
-	_, err := p.consume(tt, fmt.Sprintf("Expect '%s' at the beginning of %s declaration.", tt, ft))
+// classDecl → "class" IDENTIFIER "{" function* "}" ;
+func (p *Parser) classDecl() (stmt, error) {
+	_, err := p.consume(CLASS, "Expect 'class' at the beginning of variable declaration.")
 	if err != nil {
 		return nil, err
+	}
+	name, err := p.consume(IDENTIFIER, "Expect class name.")
+	if err != nil {
+		return nil, err
+	}
+	_, err = p.consume(LEFT_BRACE, "Expect '{' before class body.")
+	if err != nil {
+		return nil, err
+	}
+	methods := make([]functionStmt, 0)
+	for !p.match(RIGHT_BRACE) && !p.isAtEnd() {
+		method, err := p.function(METHOD)
+		if err != nil {
+			return nil, err
+		}
+		methods = append(methods, method)
+	}
+	_, err = p.consume(RIGHT_BRACE, "Expect '}' after class body.")
+	if err != nil {
+		return nil, err
+	}
+	return classStmt{name: name, methods: methods}, nil
+}
+
+// fnDecl → "fn" function ;
+// function → IDENTIFIER "(" parameters? ")" block ;
+func (p *Parser) function(ft fnType) (functionStmt, error) {
+	if ft == FUNCTION {
+		_, err := p.consume(FN, "Expect 'fn' at the beginning of function declaration.")
+		if err != nil {
+			return functionStmt{}, err
+		}
 	}
 	name, err := p.consume(IDENTIFIER, fmt.Sprintf("Expect %s name.", ft))
 	if err != nil {
-		return nil, err
+		return functionStmt{}, err
 	}
 	_, err = p.consume(LEFT_PAREN, fmt.Sprintf("Expect '(' after %s name.", ft))
 	if err != nil {
-		return nil, err
+		return functionStmt{}, err
 	}
 	parameters := make([]token, 0)
 	if !p.match(RIGHT_PAREN) {
 		for {
 			if len(parameters) >= 255 {
-				return nil, p.er.ParseError(p.peek(), "Can't have more than 255 parameters.")
+				return functionStmt{}, p.er.ParseError(p.peek(), "Can't have more than 255 parameters.")
 			}
 			param, err := p.consume(IDENTIFIER, "Expect parameter name.")
 			if err != nil {
-				return nil, err
+				return functionStmt{}, err
 			}
 			parameters = append(parameters, param)
 			if p.match(COMMA) {
@@ -89,11 +118,11 @@ func (p *Parser) function(ft fnType) (stmt, error) {
 	}
 	_, err = p.consume(RIGHT_PAREN, "Expect ')' after parameters.")
 	if err != nil {
-		return nil, err
+		return functionStmt{}, err
 	}
 	bodyStmts, err := p.block()
 	if err != nil {
-		return nil, err
+		return functionStmt{}, err
 	}
 	return functionStmt{name: name, params: parameters, body: bodyStmts}, nil
 }
