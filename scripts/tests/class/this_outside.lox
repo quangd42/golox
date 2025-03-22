@@ -1,0 +1,11 @@
+print this;
+
+fn notAMethod() {
+	print this;
+}
+
+print "we got here";
+
+notAMethod();
+
+print "we also got here";

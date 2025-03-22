@@ -5,6 +5,7 @@ type Resolver struct {
 	interpreter   *Interpreter
 	scopes        *scopeStack
 	currentFn     fnType
+	currentClass  classType
 }
 
 func NewResolver(er ErrorReporter, i *Interpreter) *Resolver {
@@ -12,7 +13,8 @@ func NewResolver(er ErrorReporter, i *Interpreter) *Resolver {
 		errorReporter: er,
 		interpreter:   i,
 		scopes:        newScopeStack(),
-		currentFn:     NONE,
+		currentFn:     fnTypeNONE,
+		currentClass:  classTypeNONE,
 	}
 }
 
@@ -145,6 +147,14 @@ func (r *Resolver) visitSetExpr(e setExpr) (any, error) {
 	return nil, nil
 }
 
+func (r *Resolver) visitThisExpr(e thisExpr) (any, error) {
+	if r.currentClass == classTypeNONE {
+		r.errorReporter.ParseError(e.keyword, "Can't use 'this' outside of a class.")
+	}
+	r.resolveLocal(e, e.keyword)
+	return nil, nil
+}
+
 func (r *Resolver) visitExprStmt(s exprStmt) error {
 	r.resolveExpr(s.expr)
 	return nil
@@ -153,7 +163,7 @@ func (r *Resolver) visitExprStmt(s exprStmt) error {
 func (r *Resolver) visitFunctionStmt(s functionStmt) error {
 	r.declare(s.name)
 	r.define(s.name)
-	return r.resolveFunction(s, FUNCTION)
+	return r.resolveFunction(s, fnTypeFUNCTION)
 }
 
 func (r *Resolver) visitIfStmt(s ifStmt) error {
@@ -171,7 +181,7 @@ func (r *Resolver) visitPrintStmt(s printStmt) error {
 }
 
 func (r *Resolver) visitReturnStmt(s returnStmt) error {
-	if r.currentFn == NONE {
+	if r.currentFn == fnTypeNONE {
 		r.errorReporter.ParseError(s.keyword, "Can't return from top-level code.")
 	}
 	if s.value != nil {
@@ -202,10 +212,20 @@ func (r *Resolver) visitBlockStmt(s blockStmt) error {
 }
 
 func (r *Resolver) visitClassStmt(s classStmt) error {
+	enclosingClass := r.currentClass
+	r.currentClass = classTypeCLASS
+	defer func(r *Resolver) {
+		r.currentClass = enclosingClass
+	}(r)
+
 	r.declare(s.name)
 	r.define(s.name)
+	r.beginScope()
+	defer r.endScope()
+	currentScope, _ := r.scopes.peek() // after begining a scope this cannot fail
+	currentScope["this"] = true
 	for _, stmt := range s.methods {
-		r.resolveFunction(stmt, METHOD)
+		r.resolveFunction(stmt, fnTypeMETHOD)
 	}
 	return nil
 }

@@ -27,6 +27,11 @@ func Test_primary(t *testing.T) {
 			input: "((nil))",
 			want:  groupingExpr{groupingExpr{literalExpr{nil}}},
 		},
+		{
+			desc:  "THIS",
+			input: "this",
+			want:  thisExpr{keyword: newTokenNoLiteralType(THIS, 1, 0)},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

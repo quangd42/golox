@@ -1,5 +1,12 @@
 package lox
 
+type classType string
+
+const (
+	classTypeNONE  classType = "none"
+	classTypeCLASS classType = "class"
+)
+
 type class struct {
 	name    string
 	methods map[string]function

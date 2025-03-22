@@ -14,6 +14,7 @@ type exprVisitor interface {
 	visitLiteralExpr(e literalExpr) (any, error)
 	visitLogicalExpr(e logicalExpr) (any, error)
 	visitSetExpr(e setExpr) (any, error)
+	visitThisExpr(e thisExpr) (any, error)
 	visitUnaryExpr(e unaryExpr) (any, error)
 	visitVariableExpr(e variableExpr) (any, error)
 	visitAssignExpr(e assignExpr) (any, error)
@@ -82,6 +83,14 @@ type setExpr struct {
 
 func (e setExpr) accept(v exprVisitor) (any, error) {
 	return v.visitSetExpr(e)
+}
+
+type thisExpr struct {
+	keyword token
+}
+
+func (e thisExpr) accept(v exprVisitor) (any, error) {
+	return v.visitThisExpr(e)
 }
 
 type unaryExpr struct {

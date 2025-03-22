@@ -40,7 +40,7 @@ func (p *Parser) declaration() (out stmt, err error) {
 	case p.match(VAR):
 		out, err = p.varDecl()
 	case p.match(FN):
-		out, err = p.function(FUNCTION)
+		out, err = p.function(fnTypeFUNCTION)
 	default:
 		out, err = p.statement()
 	}
@@ -68,7 +68,7 @@ func (p *Parser) classDecl() (stmt, error) {
 	}
 	methods := make([]functionStmt, 0)
 	for !p.match(RIGHT_BRACE) && !p.isAtEnd() {
-		method, err := p.function(METHOD)
+		method, err := p.function(fnTypeMETHOD)
 		if err != nil {
 			return nil, err
 		}
@@ -84,7 +84,7 @@ func (p *Parser) classDecl() (stmt, error) {
 // fnDecl → "fn" function ;
 // function → IDENTIFIER "(" parameters? ")" block ;
 func (p *Parser) function(ft fnType) (functionStmt, error) {
-	if ft == FUNCTION {
+	if ft == fnTypeFUNCTION {
 		_, err := p.consume(FN, "Expect 'fn' at the beginning of function declaration.")
 		if err != nil {
 			return functionStmt{}, err
@@ -619,6 +619,8 @@ func (p *Parser) primary() (expr, error) {
 		return variableExpr{tok}, nil
 	case tok.hasType(NUMBER, STRING):
 		return literalExpr{tok.literal}, nil
+	case tok.hasType(THIS):
+		return thisExpr{tok}, nil
 	case tok.hasType(LEFT_PAREN):
 		out, err := p.expression()
 		if err != nil {

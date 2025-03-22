@@ -234,7 +234,6 @@ func (i *Interpreter) visitGroupingExpr(e groupingExpr) (any, error) {
 }
 
 func (i *Interpreter) visitVariableExpr(e variableExpr) (any, error) {
-	// return i.env.get(e.name)
 	return i.lookUpVariable(e.name, e)
 }
 
@@ -307,10 +306,13 @@ func (i *Interpreter) visitGetExpr(e getExpr) (any, error) {
 	if !ok {
 		return nil, NewRuntimeError(e.name, "Only instances have properties.")
 	}
-	if val, ok := instance.fields[e.name.lexeme]; ok {
+	val, ok := instance.fields[e.name.lexeme]
+	if ok {
 		return val, nil
-	} else if method, ok := instance.class.methods[e.name.lexeme]; ok {
-		return method, nil
+	}
+	method, ok := instance.class.methods[e.name.lexeme]
+	if ok {
+		return method.bind(instance), nil
 	}
 	return nil, NewRuntimeError(e.name, fmt.Sprintf("Undefined properties '%s'", e.name.lexeme))
 }
@@ -330,6 +332,10 @@ func (i *Interpreter) visitSetExpr(e setExpr) (any, error) {
 	}
 	instance.fields[e.name.lexeme] = val
 	return val, nil
+}
+
+func (i *Interpreter) visitThisExpr(e thisExpr) (any, error) {
+	return i.lookUpVariable(e.keyword, e)
 }
 
 func (i *Interpreter) execute(s stmt) error {

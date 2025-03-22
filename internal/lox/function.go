@@ -8,9 +8,9 @@ import (
 type fnType string
 
 const (
-	NONE     fnType = "none"
-	FUNCTION fnType = "function"
-	METHOD   fnType = "method"
+	fnTypeNONE     fnType = "none"
+	fnTypeFUNCTION fnType = "function"
+	fnTypeMETHOD   fnType = "method"
 )
 
 type function struct {
@@ -43,6 +43,12 @@ func (f function) call(i *Interpreter, args []any) (any, error) {
 
 func (f function) arity() int {
 	return len(f.declaration.params)
+}
+
+func (f function) bind(i instance) function {
+	env := newEnvironment(f.closure)
+	env.define("this", i)
+	return newFunction(f.declaration, env)
 }
 
 func (f function) String() string {
