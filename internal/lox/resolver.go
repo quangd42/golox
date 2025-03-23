@@ -136,6 +136,13 @@ func (r *Resolver) visitAssignExpr(e assignExpr) (any, error) {
 	return nil, nil
 }
 
+func (r *Resolver) visitTernaryExpr(e ternaryExpr) (any, error) {
+	r.resolveExpr(e.condition)
+	r.resolveExpr(e.thenExpr)
+	r.resolveExpr(e.elseExpr)
+	return nil, nil
+}
+
 func (r *Resolver) visitGetExpr(e getExpr) (any, error) {
 	r.resolveExpr(e.object)
 	return nil, nil

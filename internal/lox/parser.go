@@ -430,7 +430,7 @@ func (p *Parser) ternary() (expr, error) {
 		if err != nil {
 			return nil, err
 		}
-		trueExpr, err := p.ternary()
+		thenExpr, err := p.ternary()
 		if err != nil {
 			return nil, err
 		}
@@ -441,18 +441,14 @@ func (p *Parser) ternary() (expr, error) {
 		if !rOper.hasType(COLON) {
 			return nil, p.er.ParseError(lOper, "Expect ':' after expression.")
 		}
-		falseExpr, err := p.ternary()
+		elseExpr, err := p.ternary()
 		if err != nil {
 			return nil, err
 		}
-		out = binaryExpr{
-			left: binaryExpr{
-				left:     out,
-				operator: lOper,
-				right:    trueExpr,
-			},
-			operator: rOper,
-			right:    falseExpr,
+		out = ternaryExpr{
+			condition: out,
+			thenExpr:  thenExpr,
+			elseExpr:  elseExpr,
 		}
 	}
 	return out, nil

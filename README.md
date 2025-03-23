@@ -11,6 +11,7 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
   - [x] Arithmetics
   - [x] Comparison and equality
   - [x] Logical operators: and/or
+  - [x] Ternary (?:)
 - [x] Statements
   - [x] Print statement
   - [x] Expression statement
@@ -25,9 +26,9 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
    - [ ] Inheritance
 - [ ] Standard Library
 
-Differences from the book:
+Differences in syntax from proposed in the book:
 - Go like syntax for if/else: parentheses not required for condition expression, thenBranch and elseBranch must be blocks (requires braces).
-- Go like syntax for 'for' loop: parentheses not required; loop body must be a block (requires braces).
+- Go like syntax for loops ('while' and 'for'): parentheses not required; loop body must be a block (requires braces).
 - Keyword to define a function is `fn`.
 
 Read more about [the Lox Language](https://craftinginterpreters.com/the-lox-language.html).

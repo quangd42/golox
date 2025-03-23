@@ -297,6 +297,18 @@ func (i *Interpreter) visitCallExpr(e callExpr) (any, error) {
 	return function.call(i, args)
 }
 
+func (i *Interpreter) visitTernaryExpr(e ternaryExpr) (any, error) {
+	condition, err := i.evaluate(e.condition)
+	if err != nil {
+		return nil, err
+	}
+	if i.isTruthy(condition) {
+		return i.evaluate(e.thenExpr)
+	} else {
+		return i.evaluate(e.elseExpr)
+	}
+}
+
 func (i *Interpreter) visitGetExpr(e getExpr) (any, error) {
 	object, err := i.evaluate(e.object)
 	if err != nil {
@@ -392,8 +404,9 @@ func (i *Interpreter) visitIfStmt(s ifStmt) error {
 		return i.execute(s.thenBranch)
 	} else if s.elseBranch != nil {
 		return i.execute(s.elseBranch)
+	} else {
+		return nil
 	}
-	return nil
 }
 
 func (i *Interpreter) visitPrintStmt(s printStmt) error {

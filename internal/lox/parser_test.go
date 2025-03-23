@@ -338,45 +338,29 @@ func Test_ternary(t *testing.T) {
 		{
 			desc:  "Simple_Ternary",
 			input: "23==2.3?true:false",
-			want: binaryExpr{
-				left: binaryExpr{
-					left:     binaryExpr{left: literalExpr{23}, operator: newTokenNoLiteralType(EQUAL_EQUAL, 1, 2), right: literalExpr{2.3}},
-					operator: newTokenNoLiteralType(QUESTION, 1, 7),
-					right:    literalExpr{true},
-				},
-				operator: newTokenNoLiteralType(COLON, 1, 12),
-				right:    literalExpr{false},
+			want: ternaryExpr{
+				condition: binaryExpr{left: literalExpr{23}, operator: newTokenNoLiteralType(EQUAL_EQUAL, 1, 2), right: literalExpr{2.3}},
+				thenExpr:  literalExpr{true},
+				elseExpr:  literalExpr{false},
 			},
 		},
 		{
 			desc:  "Nested_Ternary",
 			input: "10>5?(true?false:true):(false?true:nil)",
-			want: binaryExpr{
-				left: binaryExpr{
-					left:     binaryExpr{left: literalExpr{10}, operator: newTokenNoLiteralType(GREATER, 1, 2), right: literalExpr{5}},
-					operator: newTokenNoLiteralType(QUESTION, 1, 4),
-					right: groupingExpr{
-						binaryExpr{
-							left: binaryExpr{
-								left:     literalExpr{true},
-								operator: newTokenNoLiteralType(QUESTION, 1, 10),
-								right:    literalExpr{false},
-							},
-							operator: newTokenNoLiteralType(COLON, 1, 16),
-							right:    literalExpr{true},
-						},
+			want: ternaryExpr{
+				condition: binaryExpr{left: literalExpr{10}, operator: newTokenNoLiteralType(GREATER, 1, 2), right: literalExpr{5}},
+				thenExpr: groupingExpr{
+					ternaryExpr{
+						condition: literalExpr{true},
+						thenExpr:  literalExpr{false},
+						elseExpr:  literalExpr{true},
 					},
 				},
-				operator: newTokenNoLiteralType(COLON, 1, 22),
-				right: groupingExpr{
-					binaryExpr{
-						left: binaryExpr{
-							left:     literalExpr{false},
-							operator: newTokenNoLiteralType(QUESTION, 1, 29),
-							right:    literalExpr{true},
-						},
-						operator: newTokenNoLiteralType(COLON, 1, 34),
-						right:    literalExpr{nil},
+				elseExpr: groupingExpr{
+					ternaryExpr{
+						condition: literalExpr{false},
+						thenExpr:  literalExpr{true},
+						elseExpr:  literalExpr{nil},
 					},
 				},
 			},
@@ -384,24 +368,20 @@ func Test_ternary(t *testing.T) {
 		{
 			desc:  "Complex_Condition_Ternary",
 			input: "(5+3)<10?\"yes\":\"no\"",
-			want: binaryExpr{
-				left: binaryExpr{
-					left: binaryExpr{
-						left: groupingExpr{
-							binaryExpr{
-								left:     literalExpr{5},
-								operator: newTokenNoLiteralType(PLUS, 1, 2),
-								right:    literalExpr{3},
-							},
+			want: ternaryExpr{
+				condition: binaryExpr{
+					left: groupingExpr{
+						binaryExpr{
+							left:     literalExpr{5},
+							operator: newTokenNoLiteralType(PLUS, 1, 2),
+							right:    literalExpr{3},
 						},
-						operator: newTokenNoLiteralType(LESS, 1, 5),
-						right:    literalExpr{10},
 					},
-					operator: newTokenNoLiteralType(QUESTION, 1, 8),
-					right:    literalExpr{"yes"},
+					operator: newTokenNoLiteralType(LESS, 1, 5),
+					right:    literalExpr{10},
 				},
-				operator: newTokenNoLiteralType(COLON, 1, 14),
-				right:    literalExpr{"no"},
+				thenExpr: literalExpr{"yes"},
+				elseExpr: literalExpr{"no"},
 			},
 		},
 	}
@@ -1724,18 +1704,14 @@ func Test_Parse(t *testing.T) {
 			want: []stmt{
 				varStmt{
 					name: newToken(IDENTIFIER, "result", "result", 1, 4),
-					initializer: binaryExpr{
-						left: binaryExpr{
-							left: binaryExpr{
-								left:     literalExpr{10},
-								operator: newToken(GREATER, ">", ">", 1, 16),
-								right:    literalExpr{5},
-							},
-							operator: newToken(QUESTION, "?", "?", 1, 20),
-							right:    literalExpr{"yes"},
+					initializer: ternaryExpr{
+						condition: binaryExpr{
+							left:     literalExpr{10},
+							operator: newToken(GREATER, ">", ">", 1, 16),
+							right:    literalExpr{5},
 						},
-						operator: newToken(COLON, ":", ":", 1, 28),
-						right:    literalExpr{"no"},
+						thenExpr: literalExpr{"yes"},
+						elseExpr: literalExpr{"no"},
 					},
 				},
 			},

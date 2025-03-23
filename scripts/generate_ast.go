@@ -22,6 +22,7 @@ var ExprTypes = []string{
 	"Unary: operator token, right expr",
 	"Variable: name token",
 	"Assign: name token, value expr",
+	"Ternary: condition expr, thenExpr expr, elseExpr expr",
 }
 
 var StmtTypes = []string{
