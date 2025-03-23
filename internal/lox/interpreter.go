@@ -104,6 +104,9 @@ func (i *Interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		if rightNum == 0 {
+			return nil, NewRuntimeError(e.operator, "Divisor must not be zero.")
+		}
 		return leftNum / rightNum, nil
 	case STAR:
 		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
@@ -160,6 +163,7 @@ func (i *Interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
 	}
 }
 
+// TODO: int should stay int after binaryExpr and not coerced into float64
 func (i *Interpreter) assertNumber(val any) (float64, error) {
 	switch v := val.(type) {
 	case int:
