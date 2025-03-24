@@ -1,0 +1,15 @@
+break;
+
+continue;
+
+
+fn breakFn() {
+	break;
+}
+
+fn continueFn() {
+	continue;
+}
+
+breakFn();
+continueFn();

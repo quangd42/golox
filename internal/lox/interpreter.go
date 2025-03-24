@@ -432,7 +432,7 @@ func (i *Interpreter) visitReturnStmt(s returnStmt) error {
 			return err
 		}
 	}
-	return &returnValue{value: val}
+	return &functionReturn{value: val}
 }
 
 func (i *Interpreter) visitWhileStmt(s whileStmt) error {
@@ -446,9 +446,28 @@ func (i *Interpreter) visitWhileStmt(s whileStmt) error {
 		}
 		err = i.execute(s.body)
 		if err != nil {
+			var breakErr *loopBreak
+			if errors.As(err, &breakErr) {
+				return nil
+			}
+			var contErr *loopContinue
+			if errors.As(err, &contErr) {
+				continue
+			}
+			// To support labeled break, continue, keep the label in the error value
+			// and check if the label matches the label of the current loop. If not,
+			// continue to bubble up the 'error'.
 			return err
 		}
 	}
+}
+
+func (i *Interpreter) visitBreakStmt(s breakStmt) error {
+	return &loopBreak{s.keyword}
+}
+
+func (i *Interpreter) visitContinueStmt(s continueStmt) error {
+	return &loopContinue{s.keyword}
 }
 
 func (i *Interpreter) visitBlockStmt(s blockStmt) error {

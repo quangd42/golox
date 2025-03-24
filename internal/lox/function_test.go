@@ -11,7 +11,7 @@ func Test_function_call(t *testing.T) {
 		args     []any
 		want     any
 		wantErr  bool
-		retValue *returnValue
+		retValue *functionReturn
 		err      error
 	}{
 		{
@@ -44,7 +44,7 @@ func Test_function_call(t *testing.T) {
 			args:     []any{},
 			want:     "hello",
 			wantErr:  false,
-			retValue: &returnValue{value: "hello"},
+			retValue: &functionReturn{value: "hello"},
 			err:      nil,
 		},
 		{

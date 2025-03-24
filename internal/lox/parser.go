@@ -151,7 +151,10 @@ func (p *Parser) varDecl() (stmt, error) {
 	return varStmt{name: name, initializer: initializer}, nil
 }
 
-// statement → exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt | block ;
+/*
+statement → exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt
+| breakStmt | continueStmt | block ;
+*/
 func (p *Parser) statement() (stmt, error) {
 	switch {
 	case p.match(FOR):
@@ -164,6 +167,10 @@ func (p *Parser) statement() (stmt, error) {
 		return p.returnStatement()
 	case p.match(WHILE):
 		return p.whileStatement()
+	case p.match(BREAK):
+		return p.breakStatement()
+	case p.match(CONTINUE):
+		return p.continueStatement()
 	case p.match(LEFT_BRACE):
 		stmts, err := p.block()
 		if err != nil {
@@ -320,6 +327,32 @@ func (p *Parser) whileStatement() (stmt, error) {
 		return nil, err
 	}
 	return whileStmt{condition: condition, body: blockStmt{stmts}}, nil
+}
+
+// breakStmt → "break" ";"
+func (p *Parser) breakStatement() (stmt, error) {
+	tok, err := p.consume(BREAK, "Expect 'break' at the beginning of breakStatement.")
+	if err != nil {
+		return nil, err
+	}
+	_, err = p.consume(SEMICOLON, "Expect ';' after break.")
+	if err != nil {
+		return nil, err
+	}
+	return breakStmt{keyword: tok}, nil
+}
+
+// continueStmt → "continue" ";"
+func (p *Parser) continueStatement() (stmt, error) {
+	tok, err := p.consume(CONTINUE, "Expect 'break' at the beginning of continueStatement.")
+	if err != nil {
+		return nil, err
+	}
+	_, err = p.consume(SEMICOLON, "Expect ';' after continue.")
+	if err != nil {
+		return nil, err
+	}
+	return continueStmt{keyword: tok}, nil
 }
 
 // block → "{" declaration* "}" ;
@@ -611,10 +644,10 @@ func (p *Parser) primary() (expr, error) {
 		return literalExpr{false}, nil
 	case tok.hasType(NIL):
 		return literalExpr{nil}, nil
-	case tok.hasType(IDENTIFIER):
-		return variableExpr{tok}, nil
 	case tok.hasType(NUMBER, STRING):
 		return literalExpr{tok.literal}, nil
+	case tok.hasType(IDENTIFIER):
+		return variableExpr{tok}, nil
 	case tok.hasType(THIS):
 		return thisExpr{tok}, nil
 	case tok.hasType(LEFT_PAREN):

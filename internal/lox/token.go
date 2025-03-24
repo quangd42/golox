@@ -60,6 +60,8 @@ const (
 	TRUE
 	VAR
 	WHILE
+	BREAK
+	CONTINUE
 
 	EOF
 )
@@ -121,6 +123,8 @@ func (tt tokenType) String() string {
 		"true",
 		"var",
 		"while",
+		"break",
+		"continue",
 
 		"EOF",
 	}
@@ -171,22 +175,24 @@ func (t token) hasType(expected ...tokenType) bool {
 // is a reserved keyword, and returns an error otherwise
 func getKeywords(lex string) (tokenType, error) {
 	keywords := map[string]tokenType{
-		"and":    AND,
-		"class":  CLASS,
-		"else":   ELSE,
-		"false":  FALSE,
-		"fn":     FN,
-		"for":    FOR,
-		"if":     IF,
-		"nil":    NIL,
-		"or":     OR,
-		"print":  PRINT,
-		"return": RETURN,
-		"super":  SUPER,
-		"this":   THIS,
-		"true":   TRUE,
-		"var":    VAR,
-		"while":  WHILE,
+		"and":      AND,
+		"class":    CLASS,
+		"else":     ELSE,
+		"false":    FALSE,
+		"fn":       FN,
+		"for":      FOR,
+		"if":       IF,
+		"nil":      NIL,
+		"or":       OR,
+		"print":    PRINT,
+		"return":   RETURN,
+		"super":    SUPER,
+		"this":     THIS,
+		"true":     TRUE,
+		"var":      VAR,
+		"while":    WHILE,
+		"break":    BREAK,
+		"continue": CONTINUE,
 	}
 	tt, ok := keywords[lex]
 	if !ok {

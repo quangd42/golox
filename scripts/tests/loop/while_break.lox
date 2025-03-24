@@ -1,0 +1,14 @@
+fn breakFn() {
+	var a = 1;
+	var b = a;
+	while true {
+		print a;
+		if a > 1000 { break; }
+		var temp = a;
+		a = a + b;
+		b = temp;
+	}
+	print "got out of while loop";
+}
+
+breakFn();

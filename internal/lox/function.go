@@ -35,12 +35,12 @@ func (f function) call(i *Interpreter, args []any) (any, error) {
 	}
 	err := i.executeBlock(blockStmt{f.declaration.body}, env)
 	if err != nil {
-		var retVal *returnValue
-		if errors.As(err, &retVal) {
+		var fnRet *functionReturn
+		if errors.As(err, &fnRet) {
 			if f.isInitializer { // Returned value in initializer is overiden to 'this'
 				return f.closure.getAt(0, newTokenNoLiteralType(THIS, 0, 0))
 			}
-			return retVal.value, nil
+			return fnRet.value, nil
 		}
 		return nil, err
 	}
@@ -62,12 +62,4 @@ func (f function) bind(i instance) function {
 
 func (f function) String() string {
 	return fmt.Sprintf("<fn %s>", f.declaration.name.lexeme)
-}
-
-type returnValue struct {
-	value any
-}
-
-func (v *returnValue) Error() string {
-	return fmt.Sprintf("%s", v.value)
 }

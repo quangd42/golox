@@ -1197,6 +1197,70 @@ func Test_whileStmt(t *testing.T) {
 				body: blockStmt{statements: []stmt{printStmt{expr: literalExpr{true}}}},
 			},
 		},
+		{
+			desc:  "while_loop_with_break",
+			input: "while true {print 1;break;}",
+			want: whileStmt{
+				condition: literalExpr{true},
+				body: blockStmt{
+					statements: []stmt{
+						printStmt{expr: literalExpr{1}},
+						breakStmt{keyword: newTokenNoLiteralType(BREAK, 1, 20)},
+					},
+				},
+			},
+		},
+		{
+			desc:  "while_loop_with_continue",
+			input: "while true {print 1;continue;}",
+			want: whileStmt{
+				condition: literalExpr{true},
+				body: blockStmt{
+					statements: []stmt{
+						printStmt{expr: literalExpr{1}},
+						continueStmt{keyword: newTokenNoLiteralType(CONTINUE, 1, 20)},
+					},
+				},
+			},
+		},
+		{
+			desc:  "nested_while_with_break",
+			input: "while true { while true { break; } }",
+			want: whileStmt{
+				condition: literalExpr{true},
+				body: blockStmt{
+					statements: []stmt{
+						whileStmt{
+							condition: literalExpr{true},
+							body: blockStmt{
+								statements: []stmt{
+									breakStmt{keyword: newTokenNoLiteralType(BREAK, 1, 26)},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:  "nested_while_with_continue",
+			input: "while true { while true { continue; } }",
+			want: whileStmt{
+				condition: literalExpr{true},
+				body: blockStmt{
+					statements: []stmt{
+						whileStmt{
+							condition: literalExpr{true},
+							body: blockStmt{
+								statements: []stmt{
+									continueStmt{keyword: newTokenNoLiteralType(CONTINUE, 1, 26)},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {

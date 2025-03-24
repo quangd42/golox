@@ -1,11 +1,19 @@
 package lox
 
+type loopType bool
+
+const (
+	loopTypeNONE  loopType = false
+	loopTypeWHILE loopType = true
+)
+
 type Resolver struct {
 	errorReporter ErrorReporter
 	interpreter   *Interpreter
 	scopes        *scopeStack
 	currentFn     fnType
 	currentClass  classType
+	currentLoop   loopType
 }
 
 func NewResolver(er ErrorReporter, i *Interpreter) *Resolver {
@@ -15,6 +23,7 @@ func NewResolver(er ErrorReporter, i *Interpreter) *Resolver {
 		scopes:        newScopeStack(),
 		currentFn:     fnTypeNONE,
 		currentClass:  classTypeNONE,
+		currentLoop:   loopTypeNONE,
 	}
 }
 
@@ -210,8 +219,27 @@ func (r *Resolver) visitVarStmt(s varStmt) error {
 }
 
 func (r *Resolver) visitWhileStmt(s whileStmt) error {
+	enclosingLoop := r.currentLoop
+	r.currentLoop = loopTypeWHILE
+	defer func() {
+		r.currentLoop = enclosingLoop
+	}()
 	r.resolveExpr(s.condition)
 	r.resolveStmt(s.body)
+	return nil
+}
+
+func (r *Resolver) visitBreakStmt(s breakStmt) error {
+	if r.currentLoop == loopTypeNONE {
+		r.errorReporter.ParseError(s.keyword, "Break statement must be in a loop.")
+	}
+	return nil
+}
+
+func (r *Resolver) visitContinueStmt(s continueStmt) error {
+	if r.currentLoop == loopTypeNONE {
+		r.errorReporter.ParseError(s.keyword, "Continue statement must be in a loop.")
+	}
 	return nil
 }
 

@@ -8,7 +8,7 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
 - [x] Dynamic typing
 - [x] Data types: boolean, numbers, string, nil
 - [x] Expressions:
-  - [x] Arithmetics
+  - [x] Arithmetics ('+' between number and string is 'concatenate')
   - [x] Comparison and equality
   - [x] Logical operators: and/or
   - [x] Ternary (?:)
@@ -17,7 +17,7 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
   - [x] Expression statement
   - [x] Block statement
 - [x] Control flows: if/else, while and for loop
-  - [ ] `continue` and `break`
+  - [x] `continue` and `break`
 - [x] Variables
 - [x] Functions
    - [x] Closures

@@ -33,6 +33,8 @@ var StmtTypes = []string{
 	"Return: keyword token, value expr",
 	"Var: name token, initializer expr",
 	"While: condition expr, body stmt",
+	"Break: keyword token",
+	"Continue: keyword token",
 	"Block: statements []stmt",
 	"Class: name token, methods []functionStmt",
 }

@@ -952,7 +952,7 @@ func Test_interpretReturnStmt(t *testing.T) {
 			if tC.wantErr != nil {
 				assert.EqualError(t, err, tC.wantErr.Error())
 			} else {
-				retErr, ok := err.(*returnValue)
+				retErr, ok := err.(*functionReturn)
 				assert.True(t, ok)
 				assert.Equal(t, tC.wantVal, retErr.value)
 			}
@@ -987,6 +987,34 @@ func Test_interpretWhileStmt(t *testing.T) {
 			input:   "while (cond) { x = 1; cond = false; }",
 			initEnv: map[string]any{"cond": "not a boolean", "x": 0.0},
 			wantEnv: map[string]any{"cond": false, "x": 1},
+			err:     nil,
+		},
+		{
+			desc:    "break_statement",
+			input:   "while (true) { x = 1; break; x = 2; }",
+			initEnv: map[string]any{"x": 0.0},
+			wantEnv: map[string]any{"x": 1},
+			err:     nil,
+		},
+		{
+			desc:    "continue_statement",
+			input:   "while (count < 3) { count = count + 1; continue; x = x + 1; }",
+			initEnv: map[string]any{"count": 0.0, "x": 0.0},
+			wantEnv: map[string]any{"count": 3.0, "x": 0.0},
+			err:     nil,
+		},
+		{
+			desc:    "nested_break",
+			input:   "while (x < 5) { x = x + 1; while (true) { y = y + 1; break; } if (x == 3) { break; } }",
+			initEnv: map[string]any{"x": 0.0, "y": 0.0},
+			wantEnv: map[string]any{"x": 3.0, "y": 3.0},
+			err:     nil,
+		},
+		{
+			desc:    "nested_continue",
+			input:   "while (x < 3) { x = x + 1; while (y < x) { y = y + 1; continue; z = z + 1; } }",
+			initEnv: map[string]any{"x": 0.0, "y": 0.0, "z": 0.0},
+			wantEnv: map[string]any{"x": 3.0, "y": 3.0, "z": 0.0},
 			err:     nil,
 		},
 	}
