@@ -208,12 +208,7 @@ func (s *Scanner) addTokenNumber() error {
 			break
 		}
 		if c == '.' {
-			if !isFloat {
-				isFloat = true
-			} else {
-				s.er.ScanError(s.line, fmt.Sprintf("invalid number '%s'", s.makeLexeme()+string(c)))
-				return nil
-			}
+			isFloat = true
 		}
 		s.advance()
 	}

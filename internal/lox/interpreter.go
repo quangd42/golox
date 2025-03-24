@@ -67,11 +67,15 @@ func (i *Interpreter) visitUnaryExpr(e unaryExpr) (any, error) {
 	}
 	switch e.operator.tokenType {
 	case MINUS:
-		num, err := i.assertNumber(val)
-		if err != nil {
-			return nil, NewRuntimeError(e.operator, "Operand must be a number.")
+		numI, err := i.assertInt(val)
+		if err == nil {
+			return -numI, nil
 		}
-		return -num, nil
+		numF, err := i.assertFloat(val)
+		if err == nil {
+			return -numF, nil
+		}
+		return nil, NewRuntimeError(e.operator, "Operand must be a number.")
 	case BANG:
 		return !i.isTruthy(val), nil
 	default:
@@ -98,101 +102,116 @@ func (i *Interpreter) visitBinaryExpr(e binaryExpr) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	numErr := NewRuntimeError(e.operator, "Operands must be numbers.")
 	switch e.operator.tokenType {
 	case SLASH:
-		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
-		if err != nil {
-			return nil, err
-		}
-		if rightNum == 0 {
-			return nil, NewRuntimeError(e.operator, "Divisor must not be zero.")
-		}
-		return leftNum / rightNum, nil
-	case STAR:
-		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
-		if err != nil {
-			return nil, err
-		}
-		return leftNum * rightNum, nil
-	case MINUS:
-		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
-		if err != nil {
-			return nil, err
-		}
-		return leftNum - rightNum, nil
-	case PLUS:
-		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
+		leftInt, rightInt, err := i.assertIntOperands(left, right)
 		if err == nil {
-			return leftNum + rightNum, nil
+			if rightInt == 0 {
+				return nil, NewRuntimeError(e.operator, "Divisor must not be zero.")
+			}
+			return leftInt / rightInt, nil
 		}
-		leftStr, rightStr, err := i.assertStringOperands(e.operator, left, right)
+		leftFloat, rightFloat, err := i.assertFloatOperands(left, right)
+		if err == nil {
+			if rightFloat == 0 {
+				return nil, NewRuntimeError(e.operator, "Divisor must not be zero.")
+			}
+			return leftFloat / rightFloat, nil
+		}
+		return nil, numErr
+	case STAR:
+		leftInt, rightInt, err := i.assertIntOperands(left, right)
+		if err == nil {
+			return leftInt * rightInt, nil
+		}
+		leftFloat, rightFloat, err := i.assertFloatOperands(left, right)
+		if err == nil {
+			return leftFloat * rightFloat, nil
+		}
+		return nil, numErr
+	case MINUS:
+		leftInt, rightInt, err := i.assertIntOperands(left, right)
+		if err == nil {
+			return leftInt - rightInt, nil
+		}
+		leftFloat, rightFloat, err := i.assertFloatOperands(left, right)
+		if err == nil {
+			return leftFloat - rightFloat, nil
+		}
+		return nil, numErr
+	case PLUS:
+		leftInt, rightInt, err := i.assertIntOperands(left, right)
+		if err == nil {
+			return leftInt + rightInt, nil
+		}
+		leftFloat, rightFloat, err := i.assertFloatOperands(left, right)
+		if err == nil {
+			return leftFloat + rightFloat, nil
+		}
+		leftStr, rightStr, err := i.assertStringOperands(left, right)
 		if err == nil {
 			return leftStr + rightStr, nil
 		}
 		return nil, NewRuntimeError(e.operator, "Operands must be either numbers or strings.")
 	case GREATER:
-		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertFloatOperands(left, right)
 		if err != nil {
-			return nil, err
+			return nil, numErr
 		}
 		return leftNum > rightNum, nil
 	case GREATER_EQUAL:
-		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertFloatOperands(left, right)
 		if err != nil {
-			return nil, err
+			return nil, numErr
 		}
 		return leftNum >= rightNum, nil
 	case LESS:
-		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertFloatOperands(left, right)
 		if err != nil {
-			return nil, err
+			return nil, numErr
 		}
 		return leftNum < rightNum, nil
 	case LESS_EQUAL:
-		leftNum, rightNum, err := i.assertNumberOperands(e.operator, left, right)
+		leftNum, rightNum, err := i.assertFloatOperands(left, right)
 		if err != nil {
-			return nil, err
+			return nil, numErr
 		}
 		return leftNum <= rightNum, nil
 	case BANG_EQUAL:
+		leftNum, rightNum, err := i.assertFloatOperands(left, right)
+		if err == nil {
+			return leftNum != rightNum, nil
+		}
 		return left != right, nil
 	case EQUAL_EQUAL:
+		leftNum, rightNum, err := i.assertFloatOperands(left, right)
+		if err == nil {
+			return leftNum == rightNum, nil
+		}
 		return left == right, nil
 	default:
 		return nil, NewRuntimeError(e.operator, "Undefined binary operator.")
 	}
 }
 
-// TODO: int should stay int after binaryExpr and not coerced into float64
-func (i *Interpreter) assertNumber(val any) (float64, error) {
+func (i *Interpreter) assertFloat(val any) (float64, error) {
 	switch v := val.(type) {
-	case int:
-		return float64(v), nil
-	case int8:
-		return float64(v), nil
-	case int16:
-		return float64(v), nil
-	case int32:
-		return float64(v), nil
-	case int64:
-		return float64(v), nil
-	case uint:
-		return float64(v), nil
-	case uint8:
-		return float64(v), nil
-	case uint16:
-		return float64(v), nil
-	case uint32:
-		return float64(v), nil
-	case uint64:
-		return float64(v), nil
-	case float32:
-		return float64(v), nil
 	case float64:
 		return v, nil
+	case int:
+		return float64(v), nil
 	default:
-		return 0, errors.New("NaN")
+		return 0, errors.New("not a float")
 	}
+}
+
+func (i *Interpreter) assertInt(val any) (int, error) {
+	out, ok := val.(int)
+	if !ok {
+		return 0, errors.New("not an int")
+	}
+	return out, nil
 }
 
 func (i *Interpreter) assertString(val any) (string, error) {
@@ -200,28 +219,41 @@ func (i *Interpreter) assertString(val any) (string, error) {
 	if ok {
 		return strVal, nil
 	}
-	numVal, err := i.assertNumber(val)
+	numVal, err := i.assertFloat(val)
 	if err == nil {
 		return strconv.FormatFloat(numVal, 'g', 'g', 64), nil
 	}
 	return "", errors.New("not a string")
 }
 
-func (i *Interpreter) assertNumberOperands(operator token, left, right any) (leftNum, rightNum float64, err error) {
-	err = NewRuntimeError(operator, "Operands must be numbers.")
-	leftNum, nErr := i.assertNumber(left)
+func (i *Interpreter) assertIntOperands(left, right any) (leftNum, rightNum int, err error) {
+	err = errors.New("operands are not int")
+	leftNum, nErr := i.assertInt(left)
 	if nErr != nil {
 		return 0, 0, err
 	}
-	rightNum, nErr = i.assertNumber(right)
+	rightNum, nErr = i.assertInt(right)
 	if nErr != nil {
 		return 0, 0, err
 	}
 	return leftNum, rightNum, nil
 }
 
-func (i *Interpreter) assertStringOperands(operator token, left, right any) (leftStr, rightStr string, err error) {
-	err = NewRuntimeError(operator, "Operands must be strings.")
+func (i *Interpreter) assertFloatOperands(left, right any) (leftNum, rightNum float64, err error) {
+	err = errors.New("operands are not float")
+	leftNum, nErr := i.assertFloat(left)
+	if nErr != nil {
+		return 0, 0, err
+	}
+	rightNum, nErr = i.assertFloat(right)
+	if nErr != nil {
+		return 0, 0, err
+	}
+	return leftNum, rightNum, nil
+}
+
+func (i *Interpreter) assertStringOperands(left, right any) (leftStr, rightStr string, err error) {
+	err = errors.New("operands cannot be interpreted as strings")
 	leftStr, sErr := i.assertString(left)
 	if sErr != nil {
 		return "", "", err

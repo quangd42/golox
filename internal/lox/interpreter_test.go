@@ -75,7 +75,7 @@ func Test_interpretUnaryExpr(t *testing.T) {
 		{
 			desc:  "MINUS__NUMBER__Int",
 			input: "-189",
-			want:  float64(-189),
+			want:  -189,
 			err:   nil,
 		},
 		{
@@ -148,7 +148,7 @@ func Test_interpretBinaryExpr(t *testing.T) {
 		{
 			desc:  "PLUS_int_int",
 			input: "5 + 3",
-			want:  8.0,
+			want:  8,
 			err:   nil,
 		},
 		{
@@ -680,7 +680,7 @@ func Test_interpretCallExpr_ClassConstructor(t *testing.T) {
    }
    var instance = Test();
    `,
-			want:    30.0,
+			want:    30,
 			wantErr: nil,
 		},
 	}
@@ -910,7 +910,7 @@ func Test_interpretReturnStmt(t *testing.T) {
 			desc:    "return_binary_expr",
 			input:   "return 10 + 5;",
 			initEnv: map[string]any{},
-			wantVal: 15.0,
+			wantVal: 15,
 			wantErr: nil,
 		},
 		{
@@ -1006,8 +1006,8 @@ func Test_interpretWhileStmt(t *testing.T) {
 		{
 			desc:    "nested_break",
 			input:   "while (x < 5) { x = x + 1; while (true) { y = y + 1; break; } if (x == 3) { break; } }",
-			initEnv: map[string]any{"x": 0.0, "y": 0.0},
-			wantEnv: map[string]any{"x": 3.0, "y": 3.0},
+			initEnv: map[string]any{"x": 0.0, "y": 0},
+			wantEnv: map[string]any{"x": 3.0, "y": 3},
 			err:     nil,
 		},
 		{
