@@ -1,13 +1,15 @@
 fn nested() {
 	var x = 0;
 	var y = 0;
-	while (x < 5) {
+	while x < 5 {
 		x = x + 1; 
-		while (true) { // y = y + 1;
+		print x;
+		while true { // y = y + 1;
 			y = y + 1; 
 			break;
 		} 
-		if (x == 3) { break; }
+		print y;
+		if x == 3 { break; }
 	}
 }
 

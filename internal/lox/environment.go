@@ -71,10 +71,10 @@ func (e *environment) getAt(distance int, name token) (any, error) {
 func (e *environment) getOuterEnvAt(distance int) (*environment, error) {
 	cursor := e
 	for range distance {
-		if e.enclosing == nil {
+		if cursor.enclosing == nil {
 			return nil, errors.New("could not find outer env: distance passed from resolver is too big")
 		}
-		cursor = e.enclosing
+		cursor = cursor.enclosing
 	}
 	return cursor, nil
 }
