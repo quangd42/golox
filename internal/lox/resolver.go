@@ -2,18 +2,13 @@ package lox
 
 type loopType bool
 
-const (
-	loopTypeNONE  loopType = false
-	loopTypeWHILE loopType = true
-)
-
 type Resolver struct {
 	errorReporter ErrorReporter
 	interpreter   *Interpreter
 	scopes        *scopeStack
 	currentFn     fnType
 	currentClass  classType
-	currentLoop   loopType
+	loopStack     *loopStack
 }
 
 func NewResolver(er ErrorReporter, i *Interpreter) *Resolver {
@@ -23,7 +18,7 @@ func NewResolver(er ErrorReporter, i *Interpreter) *Resolver {
 		scopes:        newScopeStack(),
 		currentFn:     fnTypeNONE,
 		currentClass:  classTypeNONE,
-		currentLoop:   loopTypeNONE,
+		loopStack:     newLoopStack(),
 	}
 }
 
@@ -94,6 +89,14 @@ func (r *Resolver) define(name token) {
 		return
 	}
 	scope[name.lexeme] = true
+}
+
+func (r *Resolver) beginLoop(label string) {
+	r.loopStack.push(label)
+}
+
+func (r *Resolver) endLoop() {
+	r.loopStack.pop()
 }
 
 func (r *Resolver) visitBinaryExpr(e binaryExpr) (any, error) {
@@ -219,26 +222,45 @@ func (r *Resolver) visitVarStmt(s varStmt) error {
 }
 
 func (r *Resolver) visitWhileStmt(s whileStmt) error {
-	enclosingLoop := r.currentLoop
-	r.currentLoop = loopTypeWHILE
-	defer func() {
-		r.currentLoop = enclosingLoop
-	}()
+	if s.label.lexeme != "" && r.loopStack.contains(s.label.lexeme) {
+		r.errorReporter.ParseError(s.label, "Label already belongs to outer loops.")
+	}
+	r.beginLoop(s.label.lexeme)
+	defer r.endLoop()
 	r.resolveExpr(s.condition)
 	r.resolveStmt(s.body)
+	if s.increment != nil {
+		r.resolveStmt(s.increment)
+	}
+	return nil
+}
+
+func (r *Resolver) visitForStmt(s forStmt) error {
+	r.beginScope()
+	defer r.endScope()
+	if s.initializer != nil {
+		r.resolveStmt(s.initializer)
+	}
+	r.resolveStmt(s.whileBody)
 	return nil
 }
 
 func (r *Resolver) visitBreakStmt(s breakStmt) error {
-	if r.currentLoop == loopTypeNONE {
+	if r.loopStack.isEmpty() {
 		r.errorReporter.ParseError(s.keyword, "Break statement must be in a loop.")
+	}
+	if s.label.lexeme != "" && !r.loopStack.contains(s.label.lexeme) {
+		r.errorReporter.ParseError(s.label, "Invalid break label.")
 	}
 	return nil
 }
 
 func (r *Resolver) visitContinueStmt(s continueStmt) error {
-	if r.currentLoop == loopTypeNONE {
+	if r.loopStack.isEmpty() {
 		r.errorReporter.ParseError(s.keyword, "Continue statement must be in a loop.")
+	}
+	if s.label.lexeme != "" && !r.loopStack.contains(s.label.lexeme) {
+		r.errorReporter.ParseError(s.label, "Invalid continue label.")
 	}
 	return nil
 }

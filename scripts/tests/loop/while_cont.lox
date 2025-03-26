@@ -1,15 +1,13 @@
 fn contFn() {
-	var a = 1;
-	var b = a;
-	while true {
-		print a;
-		if a < 500 and a > 100 { continue; }
-		if a > 1000 { break; }
-		var temp = a;
-		a = a + b;
-		b = temp;
+	var j = 0;
+	for var i = 0; i < 20; i = i + 1 {
+		if j == 0 {
+			j = 1;
+			continue;
+		} 
+		j = 0;
+		print i;
 	}
-	print "got out of while loop";
 }
 
-breakFn();
+contFn();

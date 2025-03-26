@@ -1261,6 +1261,54 @@ func Test_whileStmt(t *testing.T) {
 				},
 			},
 		},
+		{
+			desc:  "while_loop_with_break_label",
+			input: "outer: while true { inner: while true { break outer; } }",
+			want: whileStmt{
+				condition: literalExpr{true},
+				label:     newToken(IDENTIFIER, "outer", "outer", 1, 0),
+				body: blockStmt{
+					statements: []stmt{
+						whileStmt{
+							condition: literalExpr{true},
+							label:     newToken(IDENTIFIER, "inner", "inner", 1, 20),
+							body: blockStmt{
+								statements: []stmt{
+									breakStmt{
+										keyword: newTokenNoLiteralType(BREAK, 1, 40),
+										label:   newToken(IDENTIFIER, "outer", "outer", 1, 46),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:  "while_loop_with_continue_label",
+			input: "outer: while true { inner: while true { continue outer; } }",
+			want: whileStmt{
+				condition: literalExpr{true},
+				label:     newToken(IDENTIFIER, "outer", "outer", 1, 0),
+				body: blockStmt{
+					statements: []stmt{
+						whileStmt{
+							condition: literalExpr{true},
+							label:     newToken(IDENTIFIER, "inner", "inner", 1, 20),
+							body: blockStmt{
+								statements: []stmt{
+									continueStmt{
+										keyword: newTokenNoLiteralType(CONTINUE, 1, 40),
+										label:   newToken(IDENTIFIER, "outer", "outer", 1, 49),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
@@ -1291,106 +1339,103 @@ func Test_forStatement(t *testing.T) {
 		{
 			desc:  "basic_for_loop",
 			input: "for i = 0; i < 10; i = i + 1 {print i;}",
-			want: blockStmt{
-				statements: []stmt{
-					exprStmt{expr: assignExpr{
-						name:  newToken(IDENTIFIER, "i", "i", 1, 4),
-						value: literalExpr{0},
-					}},
-					whileStmt{
-						condition: binaryExpr{
-							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 11)},
-							operator: newTokenNoLiteralType(LESS, 1, 13),
-							right:    literalExpr{10},
-						},
-						body: blockStmt{
-							statements: []stmt{
-								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 36)}},
-								exprStmt{expr: assignExpr{
-									name: newToken(IDENTIFIER, "i", "i", 1, 19),
-									value: binaryExpr{
-										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 23)},
-										operator: newTokenNoLiteralType(PLUS, 1, 25),
-										right:    literalExpr{1},
-									},
-								}},
-							},
+			want: forStmt{
+				initializer: exprStmt{expr: assignExpr{
+					name:  newToken(IDENTIFIER, "i", "i", 1, 4),
+					value: literalExpr{0},
+				}},
+				whileBody: whileStmt{
+					condition: binaryExpr{
+						left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 11)},
+						operator: newTokenNoLiteralType(LESS, 1, 13),
+						right:    literalExpr{10},
+					},
+					body: blockStmt{
+						statements: []stmt{
+							printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 36)}},
 						},
 					},
+					increment: exprStmt{expr: assignExpr{
+						name: newToken(IDENTIFIER, "i", "i", 1, 19),
+						value: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 23)},
+							operator: newTokenNoLiteralType(PLUS, 1, 25),
+							right:    literalExpr{1},
+						},
+					}},
 				},
 			},
 		},
 		{
 			desc:  "for_loop_without_initializer",
 			input: "for ; x < 5; x = x + 1 {print x;}",
-			want: whileStmt{
-				condition: binaryExpr{
-					left:     variableExpr{newToken(IDENTIFIER, "x", "x", 1, 6)},
-					operator: newTokenNoLiteralType(LESS, 1, 8),
-					right:    literalExpr{5},
-				},
-				body: blockStmt{
-					statements: []stmt{
-						printStmt{expr: variableExpr{newToken(IDENTIFIER, "x", "x", 1, 30)}},
-						exprStmt{expr: assignExpr{
-							name: newToken(IDENTIFIER, "x", "x", 1, 13),
-							value: binaryExpr{
-								left:     variableExpr{newToken(IDENTIFIER, "x", "x", 1, 17)},
-								operator: newTokenNoLiteralType(PLUS, 1, 19),
-								right:    literalExpr{1},
-							},
-						}},
+			want: forStmt{
+				initializer: nil,
+				whileBody: whileStmt{
+					condition: binaryExpr{
+						left:     variableExpr{newToken(IDENTIFIER, "x", "x", 1, 6)},
+						operator: newTokenNoLiteralType(LESS, 1, 8),
+						right:    literalExpr{5},
 					},
+					body: blockStmt{
+						statements: []stmt{
+							printStmt{expr: variableExpr{newToken(IDENTIFIER, "x", "x", 1, 30)}},
+						},
+					},
+					increment: exprStmt{expr: assignExpr{
+						name: newToken(IDENTIFIER, "x", "x", 1, 13),
+						value: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "x", "x", 1, 17)},
+							operator: newTokenNoLiteralType(PLUS, 1, 19),
+							right:    literalExpr{1},
+						},
+					}},
 				},
 			},
 		},
 		{
 			desc:  "for_loop_without_condition",
 			input: "for i = 0; ; i = i + 1 {print i;}",
-			want: blockStmt{
-				statements: []stmt{
-					exprStmt{expr: assignExpr{
-						name:  newToken(IDENTIFIER, "i", "i", 1, 4),
-						value: literalExpr{0},
-					}},
-					whileStmt{
-						condition: literalExpr{true},
-						body: blockStmt{
-							statements: []stmt{
-								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 30)}},
-								exprStmt{expr: assignExpr{
-									name: newToken(IDENTIFIER, "i", "i", 1, 13),
-									value: binaryExpr{
-										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 17)},
-										operator: newTokenNoLiteralType(PLUS, 1, 19),
-										right:    literalExpr{1},
-									},
-								}},
-							},
+			want: forStmt{
+				initializer: exprStmt{expr: assignExpr{
+					name:  newToken(IDENTIFIER, "i", "i", 1, 4),
+					value: literalExpr{0},
+				}},
+				whileBody: whileStmt{
+					condition: literalExpr{true},
+					body: blockStmt{
+						statements: []stmt{
+							printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 30)}},
 						},
 					},
+					increment: exprStmt{expr: assignExpr{
+						name: newToken(IDENTIFIER, "i", "i", 1, 13),
+						value: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 17)},
+							operator: newTokenNoLiteralType(PLUS, 1, 19),
+							right:    literalExpr{1},
+						},
+					}},
 				},
 			},
 		},
 		{
 			desc:  "for_loop_without_increment",
 			input: "for i = 0; i < 10; {print i;}",
-			want: blockStmt{
-				statements: []stmt{
-					exprStmt{expr: assignExpr{
-						name:  newToken(IDENTIFIER, "i", "i", 1, 4),
-						value: literalExpr{0},
-					}},
-					whileStmt{
-						condition: binaryExpr{
-							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 11)},
-							operator: newTokenNoLiteralType(LESS, 1, 13),
-							right:    literalExpr{10},
-						},
-						body: blockStmt{
-							statements: []stmt{
-								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 26)}},
-							},
+			want: forStmt{
+				initializer: exprStmt{expr: assignExpr{
+					name:  newToken(IDENTIFIER, "i", "i", 1, 4),
+					value: literalExpr{0},
+				}},
+				whileBody: whileStmt{
+					condition: binaryExpr{
+						left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 11)},
+						operator: newTokenNoLiteralType(LESS, 1, 13),
+						right:    literalExpr{10},
+					},
+					body: blockStmt{
+						statements: []stmt{
+							printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 26)}},
 						},
 					},
 				},
@@ -1399,32 +1444,210 @@ func Test_forStatement(t *testing.T) {
 		{
 			desc:  "for_loop_with_var_declaration",
 			input: "for var i = 0; i < 5; i = i + 1 {print i;}",
-			want: blockStmt{
-				statements: []stmt{
-					varStmt{
-						name:        newToken(IDENTIFIER, "i", "i", 1, 8),
-						initializer: literalExpr{0},
+			want: forStmt{
+				initializer: varStmt{
+					name:        newToken(IDENTIFIER, "i", "i", 1, 8),
+					initializer: literalExpr{0},
+				},
+				whileBody: whileStmt{
+					condition: binaryExpr{
+						left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 15)},
+						operator: newTokenNoLiteralType(LESS, 1, 17),
+						right:    literalExpr{5},
 					},
-					whileStmt{
-						condition: binaryExpr{
-							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 15)},
-							operator: newTokenNoLiteralType(LESS, 1, 17),
-							right:    literalExpr{5},
+					body: blockStmt{
+						statements: []stmt{
+							printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 39)}},
 						},
-						body: blockStmt{
-							statements: []stmt{
-								printStmt{expr: variableExpr{newToken(IDENTIFIER, "i", "i", 1, 39)}},
-								exprStmt{expr: assignExpr{
-									name: newToken(IDENTIFIER, "i", "i", 1, 22),
-									value: binaryExpr{
-										left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 26)},
-										operator: newTokenNoLiteralType(PLUS, 1, 28),
-										right:    literalExpr{1},
-									},
+					},
+					increment: exprStmt{expr: assignExpr{
+						name: newToken(IDENTIFIER, "i", "i", 1, 22),
+						value: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 26)},
+							operator: newTokenNoLiteralType(PLUS, 1, 28),
+							right:    literalExpr{1},
+						},
+					}},
+				},
+			},
+		},
+		{
+			desc:  "for_loop_with_break",
+			input: "for i = 0; i < 10; i = i + 1 { break; }",
+			want: forStmt{
+				initializer: exprStmt{expr: assignExpr{
+					name:  newToken(IDENTIFIER, "i", "i", 1, 4),
+					value: literalExpr{0},
+				}},
+				whileBody: whileStmt{
+					condition: binaryExpr{
+						left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 11)},
+						operator: newTokenNoLiteralType(LESS, 1, 13),
+						right:    literalExpr{10},
+					},
+					body: blockStmt{
+						statements: []stmt{
+							breakStmt{keyword: newTokenNoLiteralType(BREAK, 1, 31)},
+						},
+					},
+					increment: exprStmt{expr: assignExpr{
+						name: newToken(IDENTIFIER, "i", "i", 1, 19),
+						value: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 23)},
+							operator: newTokenNoLiteralType(PLUS, 1, 25),
+							right:    literalExpr{1},
+						},
+					}},
+				},
+			},
+		},
+		{
+			desc:  "for_loop_with_continue",
+			input: "for i = 0; i < 10; i = i + 1 { continue; }",
+			want: forStmt{
+				initializer: exprStmt{expr: assignExpr{
+					name:  newToken(IDENTIFIER, "i", "i", 1, 4),
+					value: literalExpr{0},
+				}},
+				whileBody: whileStmt{
+					condition: binaryExpr{
+						left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 11)},
+						operator: newTokenNoLiteralType(LESS, 1, 13),
+						right:    literalExpr{10},
+					},
+					body: blockStmt{
+						statements: []stmt{
+							continueStmt{keyword: newTokenNoLiteralType(CONTINUE, 1, 31)},
+						},
+					},
+					increment: exprStmt{expr: assignExpr{
+						name: newToken(IDENTIFIER, "i", "i", 1, 19),
+						value: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 23)},
+							operator: newTokenNoLiteralType(PLUS, 1, 25),
+							right:    literalExpr{1},
+						},
+					}},
+				},
+			},
+		},
+		{
+			desc:  "nested_for_with_break_label",
+			input: "outer: for i = 0; i < 10; i = i + 1 { inner: for j = 0; j < 5; j = j + 1 { break outer; } }",
+			want: forStmt{
+				initializer: exprStmt{expr: assignExpr{
+					name:  newToken(IDENTIFIER, "i", "i", 1, 11),
+					value: literalExpr{0},
+				}},
+				whileBody: whileStmt{
+					condition: binaryExpr{
+						left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 18)},
+						operator: newTokenNoLiteralType(LESS, 1, 20),
+						right:    literalExpr{10},
+					},
+					label: newToken(IDENTIFIER, "outer", "outer", 1, 0),
+					body: blockStmt{
+						statements: []stmt{
+							forStmt{
+								initializer: exprStmt{expr: assignExpr{
+									name:  newToken(IDENTIFIER, "j", "j", 1, 49),
+									value: literalExpr{0},
 								}},
+								whileBody: whileStmt{
+									condition: binaryExpr{
+										left:     variableExpr{newToken(IDENTIFIER, "j", "j", 1, 56)},
+										operator: newTokenNoLiteralType(LESS, 1, 58),
+										right:    literalExpr{5},
+									},
+									label: newToken(IDENTIFIER, "inner", "inner", 1, 38),
+									body: blockStmt{
+										statements: []stmt{
+											breakStmt{
+												keyword: newTokenNoLiteralType(BREAK, 1, 75),
+												label:   newToken(IDENTIFIER, "outer", "outer", 1, 81),
+											},
+										},
+									},
+									increment: exprStmt{expr: assignExpr{
+										name: newToken(IDENTIFIER, "j", "j", 1, 63),
+										value: binaryExpr{
+											left:     variableExpr{newToken(IDENTIFIER, "j", "j", 1, 67)},
+											operator: newTokenNoLiteralType(PLUS, 1, 69),
+											right:    literalExpr{1},
+										},
+									}},
+								},
 							},
 						},
 					},
+					increment: exprStmt{expr: assignExpr{
+						name: newToken(IDENTIFIER, "i", "i", 1, 26),
+						value: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 30)},
+							operator: newTokenNoLiteralType(PLUS, 1, 32),
+							right:    literalExpr{1},
+						},
+					}},
+				},
+			},
+		},
+		{
+			desc:  "nested_for_with_continue_label",
+			input: "outer: for i = 0; i < 10; i = i + 1 { inner: for j = 0; j < 5; j = j + 1 { continue outer; } }",
+			want: forStmt{
+				initializer: exprStmt{expr: assignExpr{
+					name:  newToken(IDENTIFIER, "i", "i", 1, 11),
+					value: literalExpr{0},
+				}},
+				whileBody: whileStmt{
+					condition: binaryExpr{
+						left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 18)},
+						operator: newTokenNoLiteralType(LESS, 1, 20),
+						right:    literalExpr{10},
+					},
+					label: newToken(IDENTIFIER, "outer", "outer", 1, 0),
+					body: blockStmt{
+						statements: []stmt{
+							forStmt{
+								initializer: exprStmt{expr: assignExpr{
+									name:  newToken(IDENTIFIER, "j", "j", 1, 49),
+									value: literalExpr{0},
+								}},
+								whileBody: whileStmt{
+									condition: binaryExpr{
+										left:     variableExpr{newToken(IDENTIFIER, "j", "j", 1, 56)},
+										operator: newTokenNoLiteralType(LESS, 1, 58),
+										right:    literalExpr{5},
+									},
+									label: newToken(IDENTIFIER, "inner", "inner", 1, 38),
+									body: blockStmt{
+										statements: []stmt{
+											continueStmt{
+												keyword: newTokenNoLiteralType(CONTINUE, 1, 75),
+												label:   newToken(IDENTIFIER, "outer", "outer", 1, 84),
+											},
+										},
+									},
+									increment: exprStmt{expr: assignExpr{
+										name: newToken(IDENTIFIER, "j", "j", 1, 63),
+										value: binaryExpr{
+											left:     variableExpr{newToken(IDENTIFIER, "j", "j", 1, 67)},
+											operator: newTokenNoLiteralType(PLUS, 1, 69),
+											right:    literalExpr{1},
+										},
+									}},
+								},
+							},
+						},
+					},
+					increment: exprStmt{expr: assignExpr{
+						name: newToken(IDENTIFIER, "i", "i", 1, 26),
+						value: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "i", "i", 1, 30)},
+							operator: newTokenNoLiteralType(PLUS, 1, 32),
+							right:    literalExpr{1},
+						},
+					}},
 				},
 			},
 		},

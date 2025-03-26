@@ -182,16 +182,57 @@ func (p *Parser) statement() (stmt, error) {
 	}
 }
 
-// exprStmt → expression ";" ;
+// exprStmt → expression ";" | labeledLoopStmt ;
 func (p *Parser) exprStatement() (stmt, error) {
 	expr, err := p.expression()
 	if err != nil {
 		return nil, err
 	}
+	if p.match(COLON) {
+		return p.labeledLoopStatement(expr)
+	}
 	if _, err := p.consume(SEMICOLON, "Expect ';' after expression."); err != nil {
 		return nil, err
 	}
 	return exprStmt{expr: expr}, nil
+}
+
+// labeledLoopStmt → IDENTIFIER ":" ( forStmt | whileStmt ) ;
+func (p *Parser) labeledLoopStatement(labelExpr expr) (stmt, error) {
+	tok, _ := p.advance()
+	var label variableExpr
+	var ok bool
+	if label, ok = labelExpr.(variableExpr); !ok {
+		return nil, p.er.ParseError(tok, "Invalid label expression.")
+	}
+	var loop stmt
+	var err error
+	switch {
+	case p.match(FOR):
+		loop, err = p.forStatement()
+		if err != nil {
+			return nil, err
+		}
+		forLoop, ok := loop.(forStmt)
+		if !ok {
+			return nil, p.er.ParseError(tok, "Expect for loop statement.")
+		}
+		forLoop.whileBody.label = label.name
+		return forLoop, nil
+	case p.match(WHILE):
+		loop, err = p.whileStatement()
+		if err != nil {
+			return nil, err
+		}
+		whileLoop, ok := loop.(whileStmt)
+		if !ok {
+			return nil, p.er.ParseError(tok, "Expect while loop statement.")
+		}
+		whileLoop.label = label.name
+		return whileLoop, nil
+	default:
+		return nil, p.er.ParseError(tok, "Expect loop statement after label.")
+	}
 }
 
 // forStmt → "for" ( varDecl | exprStmt | ";" ) expression? ";" expression? block ;
@@ -200,6 +241,7 @@ func (p *Parser) forStatement() (stmt, error) {
 	if _, err := p.consume(FOR, "Expect loop."); err != nil {
 		return nil, err
 	}
+
 	var initializer stmt
 	if p.match(VAR) {
 		initializer, err = p.varDecl()
@@ -211,10 +253,9 @@ func (p *Parser) forStatement() (stmt, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	var cond expr
+	var condition expr
 	if !p.match(SEMICOLON) {
-		cond, err = p.expression()
+		condition, err = p.expression()
 		if err != nil {
 			return nil, err
 		}
@@ -222,31 +263,36 @@ func (p *Parser) forStatement() (stmt, error) {
 	if _, err := p.consume(SEMICOLON, "Expect ';' after condition."); err != nil {
 		return nil, err
 	}
-
-	var inc expr
+	var increment expr
 	if !p.match(LEFT_BRACE) {
-		inc, err = p.expression()
+		increment, err = p.expression()
 		if err != nil {
 			return nil, err
 		}
 	}
-
 	bodyStmts, err := p.block()
 	if err != nil {
 		return nil, err
 	}
 
-	if inc != nil {
-		bodyStmts = append(bodyStmts, exprStmt{inc})
+	if condition == nil {
+		condition = literalExpr{true}
 	}
-	if cond == nil {
-		cond = literalExpr{true}
-	}
-	var out stmt = whileStmt{condition: cond, body: blockStmt{bodyStmts}}
-	if initializer != nil {
-		out = blockStmt{[]stmt{initializer, out}}
+	var incStmt stmt
+	if increment == nil {
+		incStmt = nil
+	} else {
+		incStmt = exprStmt{increment}
 	}
 
+	var out stmt = forStmt{
+		initializer: initializer,
+		whileBody: whileStmt{
+			condition: condition,
+			body:      blockStmt{bodyStmts},
+			increment: incStmt,
+		},
+	}
 	return out, nil
 }
 
@@ -335,24 +381,38 @@ func (p *Parser) breakStatement() (stmt, error) {
 	if err != nil {
 		return nil, err
 	}
+	var label token
+	if !p.match(SEMICOLON) {
+		label, err = p.consume(IDENTIFIER, "Expect loop label.")
+		if err != nil {
+			return nil, err
+		}
+	}
 	_, err = p.consume(SEMICOLON, "Expect ';' after break.")
 	if err != nil {
 		return nil, err
 	}
-	return breakStmt{keyword: tok}, nil
+	return breakStmt{keyword: tok, label: label}, nil
 }
 
 // continueStmt → "continue" ";"
 func (p *Parser) continueStatement() (stmt, error) {
-	tok, err := p.consume(CONTINUE, "Expect 'break' at the beginning of continueStatement.")
+	tok, err := p.consume(CONTINUE, "Expect 'continue' at the beginning of continueStatement.")
 	if err != nil {
 		return nil, err
+	}
+	var label token
+	if !p.match(SEMICOLON) {
+		label, err = p.consume(IDENTIFIER, "Expect loop label.")
+		if err != nil {
+			return nil, err
+		}
 	}
 	_, err = p.consume(SEMICOLON, "Expect ';' after continue.")
 	if err != nil {
 		return nil, err
 	}
-	return continueStmt{keyword: tok}, nil
+	return continueStmt{keyword: tok, label: label}, nil
 }
 
 // block → "{" declaration* "}" ;

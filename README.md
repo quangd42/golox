@@ -8,16 +8,17 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
 - [x] Dynamic typing
 - [x] Data types: boolean, numbers, string, nil
 - [x] Expressions:
-  - [x] Arithmetics ('+' between number and string is 'concatenate')
+  - [x] Arithmetics 
+  - [x] **Concatenate string and number with '+'
   - [x] Comparison and equality
   - [x] Logical operators: and/or
-  - [x] Ternary (?:)
+  - [x] **Ternary ( ? : )
 - [x] Statements
   - [x] Print statement
   - [x] Expression statement
   - [x] Block statement
 - [x] Control flows: if/else, while and for loop
-  - [x] `continue` and `break`
+  - [x] **`continue` and `break` with optional label
 - [x] Variables
 - [x] Functions
    - [x] Closures
@@ -25,6 +26,8 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
 - [x] Classes
    - [ ] Inheritance
 - [ ] Standard Library
+
+**: Addition to features covered in the book.
 
 Differences in syntax from proposed in the book:
 - Go like syntax for if/else: parentheses not required for condition expression, thenBranch and elseBranch must be blocks (requires braces).

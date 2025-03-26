@@ -14,6 +14,7 @@ type stmtVisitor interface {
 	visitReturnStmt(e returnStmt) error
 	visitVarStmt(e varStmt) error
 	visitWhileStmt(e whileStmt) error
+	visitForStmt(e forStmt) error
 	visitBreakStmt(e breakStmt) error
 	visitContinueStmt(e continueStmt) error
 	visitBlockStmt(e blockStmt) error
@@ -77,14 +78,26 @@ func (e varStmt) accept(v stmtVisitor) error {
 type whileStmt struct {
 	condition expr
 	body      stmt
+	label     token
+	increment stmt
 }
 
 func (e whileStmt) accept(v stmtVisitor) error {
 	return v.visitWhileStmt(e)
 }
 
+type forStmt struct {
+	initializer stmt
+	whileBody   whileStmt
+}
+
+func (e forStmt) accept(v stmtVisitor) error {
+	return v.visitForStmt(e)
+}
+
 type breakStmt struct {
 	keyword token
+	label   token
 }
 
 func (e breakStmt) accept(v stmtVisitor) error {
@@ -93,6 +106,7 @@ func (e breakStmt) accept(v stmtVisitor) error {
 
 type continueStmt struct {
 	keyword token
+	label   token
 }
 
 func (e continueStmt) accept(v stmtVisitor) error {

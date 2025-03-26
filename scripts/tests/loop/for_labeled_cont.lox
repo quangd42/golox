@@ -1,0 +1,8 @@
+outer: for var i = 0; i <= 3; i = i + 1 {
+				 for var j = 0; j <= 3; j = j + 1 {
+					 if j == 2 {
+						 continue outer; // Skip the rest of the outer loop iteration
+					 }
+					 print i + " " + j;
+				 }
+			 }

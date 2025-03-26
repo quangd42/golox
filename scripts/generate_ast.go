@@ -32,9 +32,10 @@ var StmtTypes = []string{
 	"Print: expr expr",
 	"Return: keyword token, value expr",
 	"Var: name token, initializer expr",
-	"While: condition expr, body stmt",
-	"Break: keyword token",
-	"Continue: keyword token",
+	"While: condition expr, body stmt, label token, increment stmt",
+	"For: initializer stmt, whileBody whileStmt",
+	"Break: keyword token, label token",
+	"Continue: keyword token, label token",
 	"Block: statements []stmt",
 	"Class: name token, methods []functionStmt",
 }

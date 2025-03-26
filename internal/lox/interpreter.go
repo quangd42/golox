@@ -480,26 +480,48 @@ func (i *Interpreter) visitWhileStmt(s whileStmt) error {
 		if err != nil {
 			var breakErr *loopBreak
 			if errors.As(err, &breakErr) {
+				if breakErr.label.lexeme != "" && breakErr.label.lexeme != s.label.lexeme {
+					return err
+				}
 				return nil
 			}
 			var contErr *loopContinue
 			if errors.As(err, &contErr) {
+				if contErr.label.lexeme != "" && contErr.label.lexeme != s.label.lexeme {
+					return err
+				}
+				if s.increment != nil {
+					err = i.execute(s.increment)
+					if err != nil {
+						return err
+					}
+				}
 				continue
 			}
-			// To support labeled break, continue, keep the label in the error value
-			// and check if the label matches the label of the current loop. If not,
-			// continue to bubble up the 'error'.
 			return err
+		}
+		if s.increment != nil {
+			err = i.execute(s.increment)
+			if err != nil {
+				return err
+			}
 		}
 	}
 }
 
+func (i *Interpreter) visitForStmt(s forStmt) error {
+	return i.executeBlock(blockStmt{[]stmt{
+		s.initializer,
+		s.whileBody,
+	}}, newEnvironment(i.env))
+}
+
 func (i *Interpreter) visitBreakStmt(s breakStmt) error {
-	return &loopBreak{s.keyword}
+	return &loopBreak{keyword: s.keyword, label: s.label}
 }
 
 func (i *Interpreter) visitContinueStmt(s continueStmt) error {
-	return &loopContinue{s.keyword}
+	return &loopContinue{keyword: s.keyword, label: s.label}
 }
 
 func (i *Interpreter) visitBlockStmt(s blockStmt) error {

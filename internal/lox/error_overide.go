@@ -14,6 +14,7 @@ func (fr *functionReturn) Error() string {
 
 type loopBreak struct {
 	keyword token
+	label   token
 }
 
 func (lb *loopBreak) Error() string {
@@ -22,6 +23,7 @@ func (lb *loopBreak) Error() string {
 
 type loopContinue struct {
 	keyword token
+	label   token
 }
 
 func (lc *loopContinue) Error() string {
