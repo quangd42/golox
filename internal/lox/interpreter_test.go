@@ -1280,7 +1280,7 @@ func Test_interpretClassStmt(t *testing.T) {
 				assert.NoError(t, err)
 				val, exists := interpreter.env.values[stmts[0].(classStmt).name.lexeme]
 				assert.True(t, exists)
-				_, ok := val.(class)
+				_, ok := val.(*class)
 				assert.True(t, ok)
 			}
 		})

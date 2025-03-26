@@ -20,15 +20,15 @@ type function struct {
 	isInitializer bool
 }
 
-func newFunction(stmt functionStmt, closure *environment, isInitializer bool) function {
-	return function{
+func newFunction(stmt functionStmt, closure *environment, isInitializer bool) *function {
+	return &function{
 		declaration:   stmt,
 		closure:       closure,
 		isInitializer: isInitializer,
 	}
 }
 
-func (f function) call(i *Interpreter, args []any) (any, error) {
+func (f *function) call(i *Interpreter, args []any) (any, error) {
 	env := newEnvironment(f.closure)
 	for idx, param := range f.declaration.params {
 		env.define(param.lexeme, args[idx])
@@ -50,16 +50,16 @@ func (f function) call(i *Interpreter, args []any) (any, error) {
 	return nil, nil
 }
 
-func (f function) arity() int {
+func (f *function) arity() int {
 	return len(f.declaration.params)
 }
 
-func (f function) bind(i instance) function {
+func (f *function) bind(i *instance) *function {
 	env := newEnvironment(f.closure)
 	env.define("this", i)
 	return newFunction(f.declaration, env, f.isInitializer)
 }
 
-func (f function) String() string {
+func (f *function) String() string {
 	return fmt.Sprintf("<fn %s>", f.declaration.name.lexeme)
 }

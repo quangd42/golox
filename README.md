@@ -25,6 +25,7 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
    - [ ] Anonymous functions
 - [x] Classes
    - [ ] Inheritance
+   - [ ] Getters & Setters
 - [ ] Standard Library
 
 **: Addition to features covered in the book.

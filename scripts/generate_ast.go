@@ -37,7 +37,7 @@ var StmtTypes = []string{
 	"Break: keyword token, label token",
 	"Continue: keyword token, label token",
 	"Block: statements []stmt",
-	"Class: name token, methods []functionStmt",
+	"Class: name token, superclass variableExpr, methods []functionStmt",
 }
 
 func main() {

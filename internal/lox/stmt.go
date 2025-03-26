@@ -122,8 +122,9 @@ func (e blockStmt) accept(v stmtVisitor) error {
 }
 
 type classStmt struct {
-	name    token
-	methods []functionStmt
+	name       token
+	superclass variableExpr
+	methods    []functionStmt
 }
 
 func (e classStmt) accept(v stmtVisitor) error {

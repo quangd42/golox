@@ -280,6 +280,12 @@ func (r *Resolver) visitClassStmt(s classStmt) error {
 
 	r.declare(s.name)
 	r.define(s.name)
+	if s.superclass != (variableExpr{}) {
+		if s.superclass.name.lexeme == s.name.lexeme {
+			r.errorReporter.ParseError(s.superclass.name, "A class can't inherit from itself.")
+		}
+		r.resolveExpr(s.superclass)
+	}
 	r.beginScope()
 	defer r.endScope()
 	currentScope, _ := r.scopes.peek() // after begining a scope this cannot fail

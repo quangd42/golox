@@ -350,7 +350,7 @@ func (i *Interpreter) visitGetExpr(e getExpr) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	instance, ok := object.(instance)
+	instance, ok := object.(*instance)
 	if !ok {
 		return nil, NewRuntimeError(e.name, "Only instances have properties.")
 	}
@@ -358,7 +358,7 @@ func (i *Interpreter) visitGetExpr(e getExpr) (any, error) {
 	if ok {
 		return val, nil
 	}
-	method, ok := instance.class.methods[e.name.lexeme]
+	method, ok := instance.class.findMethod(e.name.lexeme)
 	if ok {
 		return method.bind(instance), nil
 	}
@@ -374,7 +374,7 @@ func (i *Interpreter) visitSetExpr(e setExpr) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	instance, ok := object.(instance)
+	instance, ok := object.(*instance)
 	if !ok {
 		return nil, NewRuntimeError(e.name, "Only instances have fields.")
 	}
@@ -529,14 +529,26 @@ func (i *Interpreter) visitBlockStmt(s blockStmt) error {
 }
 
 func (i *Interpreter) visitClassStmt(s classStmt) error {
+	var superclass *class
+	var ok bool
+	if s.superclass != (variableExpr{}) {
+		val, err := i.evaluate(s.superclass)
+		if err != nil {
+			return err
+		}
+		superclass, ok = val.(*class)
+		if !ok {
+			return NewRuntimeError(s.superclass.name, "Superclass must be a class.")
+		}
+	}
 	// two-stage variable binding process allows references to the class
 	// inside its own methods
 	i.env.define(s.name.lexeme, nil)
-	methods := make(map[string]function, len(s.methods))
+	methods := make(map[string]*function, len(s.methods))
 	for _, m := range s.methods {
 		methods[m.name.lexeme] = newFunction(m, i.env, m.name.lexeme == "init")
 	}
-	i.env.assign(s.name, newClass(s.name.lexeme, methods))
+	i.env.assign(s.name, newClass(s.name.lexeme, superclass, methods))
 	return nil
 }
 
