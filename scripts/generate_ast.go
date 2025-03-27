@@ -23,6 +23,7 @@ var ExprTypes = []string{
 	"Variable: name token",
 	"Assign: name token, value expr",
 	"Ternary: condition expr, thenExpr expr, elseExpr expr",
+	"Super: keyword token, method token",
 }
 
 var StmtTypes = []string{

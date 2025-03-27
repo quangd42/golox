@@ -1205,7 +1205,7 @@ func Test_interpretFunctionStmt(t *testing.T) {
 				assert.NoError(t, err)
 				val, exists := interpreter.env.values[stmts[0].(functionStmt).name.lexeme]
 				assert.True(t, exists)
-				_, ok := val.(function)
+				_, ok := val.(*function)
 				assert.True(t, ok)
 			}
 		})

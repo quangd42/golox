@@ -38,14 +38,14 @@ func (f *function) call(i *Interpreter, args []any) (any, error) {
 		var fnRet *functionReturn
 		if errors.As(err, &fnRet) {
 			if f.isInitializer { // Returned value in initializer is overiden to 'this'
-				return f.closure.getAt(0, newTokenNoLiteralType(THIS, 0, 0))
+				return f.closure.getAt(0, "this")
 			}
 			return fnRet.value, nil
 		}
 		return nil, err
 	}
 	if f.isInitializer { // Early return in initializer should return 'this'
-		return f.closure.getAt(0, newTokenNoLiteralType(THIS, 0, 0))
+		return f.closure.getAt(0, "this")
 	}
 	return nil, nil
 }

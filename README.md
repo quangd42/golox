@@ -24,7 +24,7 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
    - [x] Closures
    - [ ] Anonymous functions
 - [x] Classes
-   - [ ] Inheritance
+   - [x] Inheritance
    - [ ] Getters & Setters
 - [ ] Standard Library
 
@@ -69,4 +69,4 @@ Or run the interpreter by itself for a REPL:
 go run github.com/quangd42/golox
 ```
 
-See `/scripts/tests/` for a few tests scripts.
+See `/scripts/tests/` for more script examples.

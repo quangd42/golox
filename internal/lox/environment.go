@@ -56,14 +56,14 @@ func (e *environment) get(name token) (any, error) {
 	return nil, NewRuntimeError(name, fmt.Sprintf("Undefined variable '%s'.", name.lexeme))
 }
 
-func (e *environment) getAt(distance int, name token) (any, error) {
+func (e *environment) getAt(distance int, name string) (any, error) {
 	targetEnv, err := e.getOuterEnvAt(distance)
 	if err != nil {
 		return nil, err
 	}
-	out, ok := targetEnv.values[name.lexeme]
+	out, ok := targetEnv.values[name]
 	if !ok {
-		return nil, fmt.Errorf("incorrect distance %d from resolver: could not find variable '%s' on line %d", distance, name.lexeme, name.line)
+		return nil, fmt.Errorf("incorrect distance %d from resolver: could not find variable '%s'", distance, name)
 	}
 	return out, nil
 }

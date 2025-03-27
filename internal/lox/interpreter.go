@@ -49,7 +49,7 @@ func (i *Interpreter) lookUpVariable(name token, e expr) (any, error) {
 	if !ok {
 		return i.globals.get(name)
 	}
-	return i.env.getAt(distance, name)
+	return i.env.getAt(distance, name.lexeme)
 }
 
 func (i *Interpreter) evaluate(e expr) (any, error) {
@@ -386,6 +386,34 @@ func (i *Interpreter) visitThisExpr(e thisExpr) (any, error) {
 	return i.lookUpVariable(e.keyword, e)
 }
 
+func (i *Interpreter) visitSuperExpr(e superExpr) (any, error) {
+	distance, ok := i.locals[e]
+	if !ok {
+		return nil, errors.New("could not find super expr in locals")
+	}
+	val, err := i.env.getAt(distance, "super")
+	if err != nil {
+		return nil, err
+	}
+	superclass, ok := val.(*class)
+	if !ok {
+		return nil, errors.New("'super' value must be '*class'")
+	}
+	val, err = i.env.getAt(distance-1, "this")
+	if err != nil {
+		return nil, err
+	}
+	object, ok := val.(*instance)
+	if !ok {
+		return nil, errors.New("'this' value must be '*instance'")
+	}
+	method, ok := superclass.findMethod(e.method.lexeme)
+	if !ok {
+		return nil, NewRuntimeError(e.method, fmt.Sprintf("Undefined property '%s'.", e.method.lexeme))
+	}
+	return method.bind(object), nil
+}
+
 func (i *Interpreter) execute(s stmt) error {
 	return s.accept(i)
 }
@@ -544,9 +572,16 @@ func (i *Interpreter) visitClassStmt(s classStmt) error {
 	// two-stage variable binding process allows references to the class
 	// inside its own methods
 	i.env.define(s.name.lexeme, nil)
+	if s.superclass != (variableExpr{}) {
+		i.env = newEnvironment(i.env)
+		i.env.define("super", superclass)
+	}
 	methods := make(map[string]*function, len(s.methods))
 	for _, m := range s.methods {
 		methods[m.name.lexeme] = newFunction(m, i.env, m.name.lexeme == "init")
+	}
+	if s.superclass != (variableExpr{}) {
+		i.env = i.env.enclosing
 	}
 	i.env.assign(s.name, newClass(s.name.lexeme, superclass, methods))
 	return nil

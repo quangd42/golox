@@ -704,7 +704,11 @@ func (p *Parser) finishCall(callee expr) (expr, error) {
 	return callExpr{callee: callee, paren: tok, arguments: args}, nil
 }
 
-// primary → NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")" | IDENTIFIER ;
+/*
+primary → "true" | "false" | "nil" | "this"
+| NUMBER | STRING | IDENTIFIER | "(" expression ")"
+| "super" "." IDENTIFIER ;
+*/
 func (p *Parser) primary() (expr, error) {
 	tok, err := p.advance()
 	if err != nil {
@@ -717,12 +721,12 @@ func (p *Parser) primary() (expr, error) {
 		return literalExpr{false}, nil
 	case tok.hasType(NIL):
 		return literalExpr{nil}, nil
+	case tok.hasType(THIS):
+		return thisExpr{tok}, nil
 	case tok.hasType(NUMBER, STRING):
 		return literalExpr{tok.literal}, nil
 	case tok.hasType(IDENTIFIER):
 		return variableExpr{tok}, nil
-	case tok.hasType(THIS):
-		return thisExpr{tok}, nil
 	case tok.hasType(LEFT_PAREN):
 		out, err := p.expression()
 		if err != nil {
@@ -732,6 +736,16 @@ func (p *Parser) primary() (expr, error) {
 			return nil, err
 		}
 		return groupingExpr{out}, nil
+	case tok.hasType(SUPER):
+		_, err := p.consume(DOT, "Expect '.' after 'super'.")
+		if err != nil {
+			return nil, err
+		}
+		method, err := p.consume(IDENTIFIER, "Expect superclass method name.")
+		if err != nil {
+			return nil, err
+		}
+		return superExpr{keyword: tok, method: method}, nil
 	case tok.hasType(SLASH, STAR, MINUS, PLUS, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BANG, BANG_EQUAL):
 		_, err := p.expression()
 		if err != nil {

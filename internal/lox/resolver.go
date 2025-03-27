@@ -3,22 +3,22 @@ package lox
 type loopType bool
 
 type Resolver struct {
-	errorReporter ErrorReporter
-	interpreter   *Interpreter
-	scopes        *scopeStack
-	currentFn     fnType
-	currentClass  classType
-	loopStack     *loopStack
+	er           ErrorReporter
+	interpreter  *Interpreter
+	scopes       *scopeStack
+	currentFn    fnType
+	currentClass classType
+	loopStack    *loopStack
 }
 
 func NewResolver(er ErrorReporter, i *Interpreter) *Resolver {
 	return &Resolver{
-		errorReporter: er,
-		interpreter:   i,
-		scopes:        newScopeStack(),
-		currentFn:     fnTypeNONE,
-		currentClass:  classTypeNONE,
-		loopStack:     newLoopStack(),
+		er:           er,
+		interpreter:  i,
+		scopes:       newScopeStack(),
+		currentFn:    fnTypeNONE,
+		currentClass: classTypeNONE,
+		loopStack:    newLoopStack(),
 	}
 }
 
@@ -135,7 +135,7 @@ func (r *Resolver) visitVariableExpr(e variableExpr) (any, error) {
 	if currentScope, err := r.scopes.peek(); err == nil {
 		varInitialized, ok := currentScope[e.name.lexeme]
 		if ok && !varInitialized {
-			r.errorReporter.ParseError(e.name, "Can't read local variable in its own initializer.")
+			r.er.ParseError(e.name, "Can't read local variable in its own initializer.")
 		}
 	}
 	r.resolveLocal(e, e.name)
@@ -168,7 +168,17 @@ func (r *Resolver) visitSetExpr(e setExpr) (any, error) {
 
 func (r *Resolver) visitThisExpr(e thisExpr) (any, error) {
 	if r.currentClass == classTypeNONE {
-		r.errorReporter.ParseError(e.keyword, "Can't use 'this' outside of a class.")
+		r.er.ParseError(e.keyword, "Can't use 'this' outside of a class.")
+	}
+	r.resolveLocal(e, e.keyword)
+	return nil, nil
+}
+
+func (r *Resolver) visitSuperExpr(e superExpr) (any, error) {
+	if r.currentClass == classTypeNONE {
+		r.er.ParseError(e.keyword, "Can't use 'super' outside of a class.")
+	} else if r.currentClass != classTypeSUBCLASS {
+		r.er.ParseError(e.keyword, "Can't use 'super' in a class with no superclass.")
 	}
 	r.resolveLocal(e, e.keyword)
 	return nil, nil
@@ -201,11 +211,11 @@ func (r *Resolver) visitPrintStmt(s printStmt) error {
 
 func (r *Resolver) visitReturnStmt(s returnStmt) error {
 	if r.currentFn == fnTypeNONE {
-		r.errorReporter.ParseError(s.keyword, "Can't return from top-level code.")
+		r.er.ParseError(s.keyword, "Can't return from top-level code.")
 	}
 	if s.value != nil {
 		if r.currentFn == fnTypeINITIALIZER {
-			r.errorReporter.ParseError(s.keyword, "Can't return value from an initializer.")
+			r.er.ParseError(s.keyword, "Can't return value from an initializer.")
 		}
 		r.resolveExpr(s.value)
 	}
@@ -223,7 +233,7 @@ func (r *Resolver) visitVarStmt(s varStmt) error {
 
 func (r *Resolver) visitWhileStmt(s whileStmt) error {
 	if s.label.lexeme != "" && r.loopStack.contains(s.label.lexeme) {
-		r.errorReporter.ParseError(s.label, "Label already belongs to outer loops.")
+		r.er.ParseError(s.label, "Label already belongs to outer loops.")
 	}
 	r.beginLoop(s.label.lexeme)
 	defer r.endLoop()
@@ -247,20 +257,20 @@ func (r *Resolver) visitForStmt(s forStmt) error {
 
 func (r *Resolver) visitBreakStmt(s breakStmt) error {
 	if r.loopStack.isEmpty() {
-		r.errorReporter.ParseError(s.keyword, "Break statement must be in a loop.")
+		r.er.ParseError(s.keyword, "Break statement must be in a loop.")
 	}
 	if s.label.lexeme != "" && !r.loopStack.contains(s.label.lexeme) {
-		r.errorReporter.ParseError(s.label, "Invalid break label.")
+		r.er.ParseError(s.label, "Invalid break label.")
 	}
 	return nil
 }
 
 func (r *Resolver) visitContinueStmt(s continueStmt) error {
 	if r.loopStack.isEmpty() {
-		r.errorReporter.ParseError(s.keyword, "Continue statement must be in a loop.")
+		r.er.ParseError(s.keyword, "Continue statement must be in a loop.")
 	}
 	if s.label.lexeme != "" && !r.loopStack.contains(s.label.lexeme) {
-		r.errorReporter.ParseError(s.label, "Invalid continue label.")
+		r.er.ParseError(s.label, "Invalid continue label.")
 	}
 	return nil
 }
@@ -282,9 +292,14 @@ func (r *Resolver) visitClassStmt(s classStmt) error {
 	r.define(s.name)
 	if s.superclass != (variableExpr{}) {
 		if s.superclass.name.lexeme == s.name.lexeme {
-			r.errorReporter.ParseError(s.superclass.name, "A class can't inherit from itself.")
+			r.er.ParseError(s.superclass.name, "A class can't inherit from itself.")
 		}
+		r.currentClass = classTypeSUBCLASS
 		r.resolveExpr(s.superclass)
+		r.beginScope()
+		defer r.endScope()
+		scope, _ := r.scopes.peek()
+		scope["super"] = true
 	}
 	r.beginScope()
 	defer r.endScope()

@@ -3,8 +3,9 @@ package lox
 type classType string
 
 const (
-	classTypeNONE  classType = "none"
-	classTypeCLASS classType = "class"
+	classTypeNONE     classType = "none"
+	classTypeCLASS    classType = "class"
+	classTypeSUBCLASS classType = "subclass"
 )
 
 type class struct {
