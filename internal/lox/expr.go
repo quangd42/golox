@@ -11,6 +11,7 @@ type exprVisitor interface {
 	visitCallExpr(e callExpr) (any, error)
 	visitGetExpr(e getExpr) (any, error)
 	visitGroupingExpr(e groupingExpr) (any, error)
+	visitFunctionExpr(e functionExpr) (any, error)
 	visitLiteralExpr(e literalExpr) (any, error)
 	visitLogicalExpr(e logicalExpr) (any, error)
 	visitSetExpr(e setExpr) (any, error)
@@ -57,6 +58,15 @@ type groupingExpr struct {
 
 func (e groupingExpr) accept(v exprVisitor) (any, error) {
 	return v.visitGroupingExpr(e)
+}
+
+type functionExpr struct {
+	params []token
+	body   []stmt
+}
+
+func (e functionExpr) accept(v exprVisitor) (any, error) {
+	return v.visitFunctionExpr(e)
 }
 
 type literalExpr struct {

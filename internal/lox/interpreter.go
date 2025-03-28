@@ -414,6 +414,10 @@ func (i *Interpreter) visitSuperExpr(e superExpr) (any, error) {
 	return method.bind(object), nil
 }
 
+func (i *Interpreter) visitFunctionExpr(e functionExpr) (any, error) {
+	return newAnonymousFunction(e, i.env), nil
+}
+
 func (i *Interpreter) execute(s stmt) error {
 	return s.accept(i)
 }
@@ -455,7 +459,7 @@ func (i *Interpreter) visitExprStmt(s exprStmt) error {
 }
 
 func (i *Interpreter) visitFunctionStmt(s functionStmt) error {
-	i.env.define(s.name.lexeme, newFunction(s, i.env, false))
+	i.env.define(s.name.lexeme, newFunction(s.name, s.literal, i.env, false))
 	return nil
 }
 
@@ -578,7 +582,7 @@ func (i *Interpreter) visitClassStmt(s classStmt) error {
 	}
 	methods := make(map[string]*function, len(s.methods))
 	for _, m := range s.methods {
-		methods[m.name.lexeme] = newFunction(m, i.env, m.name.lexeme == "init")
+		methods[m.name.lexeme] = newFunction(m.name, m.literal, i.env, m.name.lexeme == "init")
 	}
 	if s.superclass != (variableExpr{}) {
 		i.env = i.env.enclosing

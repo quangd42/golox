@@ -15,6 +15,7 @@ var ExprTypes = []string{
 	"Call: callee expr, paren token, arguments []expr",
 	"Get: object expr, name token",
 	"Grouping: expr expr",
+	"Function: params []token, body []stmt",
 	"Literal: value any",
 	"Logical: left expr, operator token, right expr",
 	"Set: object expr, name token, value expr",
@@ -28,7 +29,7 @@ var ExprTypes = []string{
 
 var StmtTypes = []string{
 	"Expr: expr expr",
-	"Function: name token, params []token, body []stmt",
+	"Function: name token, literal functionExpr",
 	"If: condition expr, thenBranch stmt, elseBranch stmt",
 	"Print: expr expr",
 	"Return: keyword token, value expr",

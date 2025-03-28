@@ -1,0 +1,13 @@
+var sayHi = fn(name) { print "hello " + name ; };
+
+sayHi("you!");
+
+fn makeInc() {
+	var i = 0;
+	return fn() { i = i + 1; return i; };
+}
+
+var incer = makeInc();
+print incer();
+print incer();
+print incer();

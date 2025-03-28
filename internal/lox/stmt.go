@@ -30,9 +30,8 @@ func (e exprStmt) accept(v stmtVisitor) error {
 }
 
 type functionStmt struct {
-	name   token
-	params []token
-	body   []stmt
+	name    token
+	literal functionExpr
 }
 
 func (e functionStmt) accept(v stmtVisitor) error {

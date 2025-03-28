@@ -17,8 +17,8 @@ func Test_function_call(t *testing.T) {
 		{
 			name: "simple function with no return",
 			fn: function{
-				declaration: functionStmt{
-					name:   newToken(IDENTIFIER, "test", "test", 0, 1),
+				name: newToken(IDENTIFIER, "test", "test", 0, 1),
+				literal: functionExpr{
 					params: []token{},
 					body:   []stmt{},
 				},
@@ -31,8 +31,8 @@ func Test_function_call(t *testing.T) {
 		{
 			name: "function with return value",
 			fn: function{
-				declaration: functionStmt{
-					name:   newToken(IDENTIFIER, "test", "test", 0, 1),
+				name: newToken(IDENTIFIER, "test", "test", 0, 1),
+				literal: functionExpr{
 					params: []token{},
 					body: []stmt{
 						returnStmt{
@@ -50,8 +50,8 @@ func Test_function_call(t *testing.T) {
 		{
 			name: "function with parameters",
 			fn: function{
-				declaration: functionStmt{
-					name: newToken(IDENTIFIER, "test", "test", 0, 1),
+				name: newToken(IDENTIFIER, "test", "test", 0, 1),
+				literal: functionExpr{
 					params: []token{
 						newToken(IDENTIFIER, "x", "x", 0, 1),
 						newToken(IDENTIFIER, "y", "y", 0, 1),
@@ -67,8 +67,8 @@ func Test_function_call(t *testing.T) {
 		{
 			name: "runtime error in function body",
 			fn: function{
-				declaration: functionStmt{
-					name:   newToken(IDENTIFIER, "test", "test", 0, 1),
+				name: newToken(IDENTIFIER, "test", "test", 0, 1),
+				literal: functionExpr{
 					params: []token{},
 					body: []stmt{
 						exprStmt{

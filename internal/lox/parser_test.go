@@ -1743,15 +1743,17 @@ func Test_function(t *testing.T) {
 			input: "fn greet(name) {print \"Hello, \" + name;}",
 			want: functionStmt{
 				name: newToken(IDENTIFIER, "greet", "greet", 1, 3),
-				params: []token{
-					newToken(IDENTIFIER, "name", "name", 1, 9),
-				},
-				body: []stmt{
-					printStmt{
-						expr: binaryExpr{
-							left:     literalExpr{"Hello, "},
-							operator: newTokenNoLiteralType(PLUS, 1, 32),
-							right:    variableExpr{newToken(IDENTIFIER, "name", "name", 1, 34)},
+				literal: functionExpr{
+					params: []token{
+						newToken(IDENTIFIER, "name", "name", 1, 9),
+					},
+					body: []stmt{
+						printStmt{
+							expr: binaryExpr{
+								left:     literalExpr{"Hello, "},
+								operator: newTokenNoLiteralType(PLUS, 1, 32),
+								right:    variableExpr{newToken(IDENTIFIER, "name", "name", 1, 34)},
+							},
 						},
 					},
 				},
@@ -1761,10 +1763,12 @@ func Test_function(t *testing.T) {
 			desc:  "function_no_params",
 			input: "fn hello() {print \"Hello!\";}",
 			want: functionStmt{
-				name:   newToken(IDENTIFIER, "hello", "hello", 1, 3),
-				params: []token{},
-				body: []stmt{
-					printStmt{expr: literalExpr{"Hello!"}},
+				name: newToken(IDENTIFIER, "hello", "hello", 1, 3),
+				literal: functionExpr{
+					params: []token{},
+					body: []stmt{
+						printStmt{expr: literalExpr{"Hello!"}},
+					},
 				},
 			},
 		},
@@ -1773,16 +1777,18 @@ func Test_function(t *testing.T) {
 			input: "fn add(a,b) {print a + b;}",
 			want: functionStmt{
 				name: newToken(IDENTIFIER, "add", "add", 1, 3),
-				params: []token{
-					newToken(IDENTIFIER, "a", "a", 1, 7),
-					newToken(IDENTIFIER, "b", "b", 1, 9),
-				},
-				body: []stmt{
-					printStmt{
-						expr: binaryExpr{
-							left:     variableExpr{newToken(IDENTIFIER, "a", "a", 1, 19)},
-							operator: newTokenNoLiteralType(PLUS, 1, 21),
-							right:    variableExpr{newToken(IDENTIFIER, "b", "b", 1, 23)},
+				literal: functionExpr{
+					params: []token{
+						newToken(IDENTIFIER, "a", "a", 1, 7),
+						newToken(IDENTIFIER, "b", "b", 1, 9),
+					},
+					body: []stmt{
+						printStmt{
+							expr: binaryExpr{
+								left:     variableExpr{newToken(IDENTIFIER, "a", "a", 1, 19)},
+								operator: newTokenNoLiteralType(PLUS, 1, 21),
+								right:    variableExpr{newToken(IDENTIFIER, "b", "b", 1, 23)},
+							},
 						},
 					},
 				},
@@ -1915,10 +1921,12 @@ func Test_classDecl(t *testing.T) {
 				name: newToken(IDENTIFIER, "Example", "Example", 1, 6),
 				methods: []functionStmt{
 					{
-						name:   newToken(IDENTIFIER, "method", "method", 1, 16),
-						params: []token{},
-						body: []stmt{
-							printStmt{expr: literalExpr{"hello"}},
+						name: newToken(IDENTIFIER, "method", "method", 1, 16),
+						literal: functionExpr{
+							params: []token{},
+							body: []stmt{
+								printStmt{expr: literalExpr{"hello"}},
+							},
 						},
 					},
 				},

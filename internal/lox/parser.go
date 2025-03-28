@@ -107,37 +107,11 @@ func (p *Parser) function(ft fnType) (functionStmt, error) {
 	if err != nil {
 		return functionStmt{}, err
 	}
-	_, err = p.consume(LEFT_PAREN, fmt.Sprintf("Expect '(' after %s name.", ft))
+	fnLiteral, err := p.functionLiteral(ft)
 	if err != nil {
 		return functionStmt{}, err
 	}
-	parameters := make([]token, 0)
-	if !p.match(RIGHT_PAREN) {
-		for {
-			if len(parameters) >= 255 {
-				return functionStmt{}, p.er.ParseError(p.peek(), "Can't have more than 255 parameters.")
-			}
-			param, err := p.consume(IDENTIFIER, "Expect parameter name.")
-			if err != nil {
-				return functionStmt{}, err
-			}
-			parameters = append(parameters, param)
-			if p.match(COMMA) {
-				p.advance()
-			} else {
-				break
-			}
-		}
-	}
-	_, err = p.consume(RIGHT_PAREN, "Expect ')' after parameters.")
-	if err != nil {
-		return functionStmt{}, err
-	}
-	bodyStmts, err := p.block()
-	if err != nil {
-		return functionStmt{}, err
-	}
-	return functionStmt{name: name, params: parameters, body: bodyStmts}, nil
+	return functionStmt{name: name, literal: fnLiteral}, nil
 }
 
 // varDecl → "var" IDENTIFIER ( "=" expression )? ";" ;
@@ -704,10 +678,51 @@ func (p *Parser) finishCall(callee expr) (expr, error) {
 	return callExpr{callee: callee, paren: tok, arguments: args}, nil
 }
 
+func (p *Parser) functionLiteral(ft fnType) (functionExpr, error) {
+	var errMsg string
+	switch ft {
+	case fnTypeFUNCTION, fnTypeMETHOD:
+		errMsg = fmt.Sprintf("Expect '(' after %s name.", ft)
+	case fnTypeANONYMOUS:
+		errMsg = "Expect '(' in anonymous function."
+	}
+	_, err := p.consume(LEFT_PAREN, errMsg)
+	if err != nil {
+		return functionExpr{}, err
+	}
+	parameters := make([]token, 0)
+	if !p.match(RIGHT_PAREN) {
+		for {
+			if len(parameters) >= 255 {
+				return functionExpr{}, p.er.ParseError(p.peek(), "Can't have more than 255 parameters.")
+			}
+			param, err := p.consume(IDENTIFIER, "Expect parameter name.")
+			if err != nil {
+				return functionExpr{}, err
+			}
+			parameters = append(parameters, param)
+			if p.match(COMMA) {
+				p.advance()
+			} else {
+				break
+			}
+		}
+	}
+	_, err = p.consume(RIGHT_PAREN, "Expect ')' after parameters.")
+	if err != nil {
+		return functionExpr{}, err
+	}
+	bodyStmts, err := p.block()
+	if err != nil {
+		return functionExpr{}, err
+	}
+	return functionExpr{params: parameters, body: bodyStmts}, nil
+}
+
 /*
 primary → "true" | "false" | "nil" | "this"
 | NUMBER | STRING | IDENTIFIER | "(" expression ")"
-| "super" "." IDENTIFIER ;
+| "super" "." IDENTIFIER | "fn" "(" parameters? ")" block ;
 */
 func (p *Parser) primary() (expr, error) {
 	tok, err := p.advance()
@@ -746,6 +761,8 @@ func (p *Parser) primary() (expr, error) {
 			return nil, err
 		}
 		return superExpr{keyword: tok, method: method}, nil
+	case tok.hasType(FN):
+		return p.functionLiteral(fnTypeANONYMOUS)
 	case tok.hasType(SLASH, STAR, MINUS, PLUS, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BANG, BANG_EQUAL):
 		_, err := p.expression()
 		if err != nil {

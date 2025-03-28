@@ -41,7 +41,7 @@ func (r *Resolver) resolveStmt(s stmt) error {
 	return s.accept(r)
 }
 
-func (r *Resolver) resolveFunction(s functionStmt, ft fnType) error {
+func (r *Resolver) resolveFunction(e functionExpr, ft fnType) error {
 	enclosingFn := r.currentFn
 	r.currentFn = ft
 	defer func(r *Resolver) {
@@ -49,11 +49,11 @@ func (r *Resolver) resolveFunction(s functionStmt, ft fnType) error {
 	}(r)
 	r.beginScope()
 	defer r.endScope()
-	for _, param := range s.params {
+	for _, param := range e.params {
 		r.declare(param)
 		r.define(param)
 	}
-	return r.resolveStmtList(s.body)
+	return r.resolveStmtList(e.body)
 }
 
 func (r *Resolver) resolveLocal(e expr, name token) {
@@ -184,6 +184,10 @@ func (r *Resolver) visitSuperExpr(e superExpr) (any, error) {
 	return nil, nil
 }
 
+func (r *Resolver) visitFunctionExpr(e functionExpr) (any, error) {
+	return nil, r.resolveFunction(e, fnTypeFUNCTION)
+}
+
 func (r *Resolver) visitExprStmt(s exprStmt) error {
 	r.resolveExpr(s.expr)
 	return nil
@@ -192,7 +196,7 @@ func (r *Resolver) visitExprStmt(s exprStmt) error {
 func (r *Resolver) visitFunctionStmt(s functionStmt) error {
 	r.declare(s.name)
 	r.define(s.name)
-	return r.resolveFunction(s, fnTypeFUNCTION)
+	return r.resolveFunction(s.literal, fnTypeFUNCTION)
 }
 
 func (r *Resolver) visitIfStmt(s ifStmt) error {
@@ -310,7 +314,7 @@ func (r *Resolver) visitClassStmt(s classStmt) error {
 		if method.name.lexeme == "init" {
 			methodType = fnTypeINITIALIZER
 		}
-		r.resolveFunction(method, methodType)
+		r.resolveFunction(method.literal, methodType)
 	}
 	return nil
 }

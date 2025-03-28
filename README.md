@@ -22,7 +22,7 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
 - [x] Variables
 - [x] Functions
    - [x] Closures
-   - [ ] Anonymous functions
+   - [x] Anonymous functions
 - [x] Classes
    - [x] Inheritance
    - [ ] Getters & Setters

@@ -1,0 +1,9 @@
+var twice = fn(f, x) {
+	return f(f(x));
+};
+
+var addTwo = fn(x) {
+	return x + 2;
+};
+
+print twice(addTwo, 2);
