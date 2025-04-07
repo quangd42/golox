@@ -1,134 +1,72 @@
 package lox
 
 import (
-	"errors"
 	"fmt"
 	"slices"
 )
 
-type tokenType int
+type tokenType string
 
 const (
 	// Single-character tokens.
 
-	LEFT_PAREN tokenType = iota + 1 // reserve 0 for empty value
-	RIGHT_PAREN
-	LEFT_BRACE
-	RIGHT_BRACE
-	COMMA
-	COLON
-	DOT
-	MINUS
-	PLUS
-	QUESTION
-	SEMICOLON
-	SLASH
-	STAR
+	LEFT_PAREN  tokenType = "("
+	RIGHT_PAREN tokenType = ")"
+	LEFT_BRACE  tokenType = "{"
+	RIGHT_BRACE tokenType = "}"
+	COMMA       tokenType = ","
+	COLON       tokenType = ":"
+	DOT         tokenType = "."
+	MINUS       tokenType = "-"
+	PLUS        tokenType = "+"
+	QUESTION    tokenType = "?"
+	SEMICOLON   tokenType = ";"
+	SLASH       tokenType = "/"
+	STAR        tokenType = "*"
 
 	// One or two character tokens.
 
-	BANG
-	BANG_EQUAL
-	EQUAL
-	EQUAL_EQUAL
-	GREATER
-	GREATER_EQUAL
-	LESS
-	LESS_EQUAL
+	BANG          tokenType = "!"
+	BANG_EQUAL    tokenType = "!="
+	EQUAL         tokenType = "="
+	EQUAL_EQUAL   tokenType = "=="
+	GREATER       tokenType = ">"
+	GREATER_EQUAL tokenType = ">="
+	LESS          tokenType = "<"
+	LESS_EQUAL    tokenType = "<="
 
 	// Literals.
 
-	IDENTIFIER
-	STRING
-	NUMBER
+	IDENTIFIER tokenType = "IDENTIFIER"
+	STRING     tokenType = "STRING"
+	NUMBER     tokenType = "NUMBER"
 
 	// Keywords.
 
-	AND
-	CLASS
-	ELSE
-	FALSE
-	FN
-	FOR
-	IF
-	NIL
-	OR
-	PRINT
-	RETURN
-	SUPER
-	THIS
-	TRUE
-	VAR
-	WHILE
-	BREAK
-	CONTINUE
+	AND      tokenType = "and"
+	CLASS    tokenType = "class"
+	ELSE     tokenType = "else"
+	FALSE    tokenType = "false"
+	FN       tokenType = "fn"
+	FOR      tokenType = "for"
+	IF       tokenType = "if"
+	NIL      tokenType = "nil"
+	OR       tokenType = "or"
+	PRINT    tokenType = "print"
+	RETURN   tokenType = "return"
+	SUPER    tokenType = "super"
+	THIS     tokenType = "this"
+	TRUE     tokenType = "true"
+	VAR      tokenType = "var"
+	WHILE    tokenType = "while"
+	BREAK    tokenType = "break"
+	CONTINUE tokenType = "continue"
 
-	EOF
+	EOF tokenType = "EOF"
 )
 
 func (tt tokenType) String() string {
-	names := []string{
-		// Emtpy value
-		"",
-
-		// Single-character tokens.
-
-		"(",
-		")",
-		"{",
-		"}",
-		",",
-		":",
-		".",
-		"-",
-		"+",
-		"?",
-		";",
-		"/",
-		"*",
-
-		// One or two character tokens.
-
-		"!",
-		"!=",
-		"=",
-		"==",
-		">",
-		">=",
-		"<",
-		"<=",
-
-		// Literals.
-
-		"IDENTIFIER",
-		"STRING",
-		"NUMBER",
-
-		// Keywords.
-
-		"and",
-		"class",
-		"else",
-		"false",
-		"fn",
-		"for",
-		"if",
-		"nil",
-		"or",
-
-		"print",
-		"return",
-		"super",
-		"this",
-		"true",
-		"var",
-		"while",
-		"break",
-		"continue",
-
-		"EOF",
-	}
-	return names[int(tt)]
+	return string(tt)
 }
 
 type token struct {
@@ -171,9 +109,9 @@ func (t token) hasType(expected ...tokenType) bool {
 	return slices.Contains(expected, t.tokenType)
 }
 
-// getKeywords returns the TokenType if the provided lexeme
-// is a reserved keyword, and returns an error otherwise
-func getKeywords(lex string) (tokenType, error) {
+// lookupIdentifier returns the tokenType if the provided lexeme
+// is a reserved keyword, and returns IDENTIFIER tokenType otherwise
+func lookupIdentifier(lex string) tokenType {
 	keywords := map[string]tokenType{
 		"and":      AND,
 		"class":    CLASS,
@@ -196,7 +134,7 @@ func getKeywords(lex string) (tokenType, error) {
 	}
 	tt, ok := keywords[lex]
 	if !ok {
-		return 0, errors.New("not a keyword")
+		return IDENTIFIER
 	}
-	return tt, nil
+	return tt
 }

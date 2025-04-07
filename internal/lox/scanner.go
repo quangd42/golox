@@ -240,11 +240,6 @@ func (s *Scanner) addTokenIdentifier() error {
 		s.advance()
 	}
 	lex := s.makeLexeme()
-	tt, err := getKeywords(lex)
-	if err != nil {
-		s.addToken(IDENTIFIER, lex)
-	} else {
-		s.addToken(tt, tt.String())
-	}
+	s.addToken(lookupIdentifier(lex), lex)
 	return nil
 }
