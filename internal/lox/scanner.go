@@ -145,9 +145,9 @@ func (s Scanner) makeLexeme() string {
 }
 
 // advance **consumes** a character and returns it
-func (s *Scanner) advance() rune {
+func (s *Scanner) advance() byte {
 	s.current++
-	return rune(s.source[s.current-1])
+	return s.source[s.current-1]
 }
 
 // addToken appends a new token to the scanner's internal tokens
@@ -155,21 +155,21 @@ func (s *Scanner) addToken(t tokenType, literal any) {
 	s.tokens = append(s.tokens, newToken(t, s.makeLexeme(), literal, s.line, s.start))
 }
 
-// peek returns the current rune without consuming it
-func (s Scanner) peek() (rune, error) {
+// peek returns the current byte without consuming it
+func (s Scanner) peek() (byte, error) {
 	if s.isAtEnd() {
 		return 0, ErrEOF
 	}
-	return rune(s.source[s.current]), nil
+	return s.source[s.current], nil
 }
 
-// matchConsume peeks at the current rune, if the current rune matches expected it is consumed.
-// returns whether expected rune was matched and consumed.
-func (s *Scanner) matchConsume(expected rune) bool {
+// matchConsume peeks at the current byte, if the current byte matches expected it is consumed.
+// returns whether expected byte was matched and consumed.
+func (s *Scanner) matchConsume(expected byte) bool {
 	if s.isAtEnd() {
 		return false
 	}
-	if s.source[s.current] == byte(expected) {
+	if s.source[s.current] == expected {
 		s.advance()
 		return true
 	}
