@@ -418,6 +418,43 @@ func (i *Interpreter) visitFunctionExpr(e functionExpr) (any, error) {
 	return newAnonymousFunction(e, i.env), nil
 }
 
+func (i *Interpreter) visitArrayExpr(e arrayExpr) (any, error) {
+	out := make([]any, len(e.value))
+	for idx, X := range e.value {
+		val, err := i.evaluate(X)
+		if err != nil {
+			return nil, err
+		}
+		out[idx] = val
+	}
+	return out, nil
+}
+
+func (i *Interpreter) visitIndexExpr(e indexExpr) (any, error) {
+	callee, err := i.evaluate(e.callee)
+	if err != nil {
+		return nil, err
+	}
+	index, err := i.evaluate(e.index)
+	if err != nil {
+		return nil, err
+	}
+	array, ok := callee.([]any)
+	if !ok {
+		return nil, NewRuntimeError(e.bracket, "Can only index arrays.")
+	}
+	indexInt, ok := index.(int)
+	if !ok {
+		return nil, NewRuntimeError(e.bracket, "Index must be an integer.")
+	}
+	if indexInt < 0 {
+		return nil, NewRuntimeError(e.bracket, fmt.Sprintf("Index out of range [%d].", indexInt))
+	} else if len(array) == 0 || indexInt > len(array) {
+		return nil, NewRuntimeError(e.bracket, fmt.Sprintf("Index out of range [%d] with length %d.", indexInt, len(array)))
+	}
+	return array[indexInt], nil
+}
+
 func (i *Interpreter) execute(s stmt) error {
 	return s.accept(i)
 }

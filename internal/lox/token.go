@@ -10,19 +10,21 @@ type tokenType string
 const (
 	// Single-character tokens.
 
-	LEFT_PAREN  tokenType = "("
-	RIGHT_PAREN tokenType = ")"
-	LEFT_BRACE  tokenType = "{"
-	RIGHT_BRACE tokenType = "}"
-	COMMA       tokenType = ","
-	COLON       tokenType = ":"
-	DOT         tokenType = "."
-	MINUS       tokenType = "-"
-	PLUS        tokenType = "+"
-	QUESTION    tokenType = "?"
-	SEMICOLON   tokenType = ";"
-	SLASH       tokenType = "/"
-	STAR        tokenType = "*"
+	LEFT_PAREN    tokenType = "("
+	RIGHT_PAREN   tokenType = ")"
+	LEFT_BRACKET  tokenType = "["
+	RIGHT_BRACKET tokenType = "]"
+	LEFT_BRACE    tokenType = "{"
+	RIGHT_BRACE   tokenType = "}"
+	COMMA         tokenType = ","
+	COLON         tokenType = ":"
+	DOT           tokenType = "."
+	MINUS         tokenType = "-"
+	PLUS          tokenType = "+"
+	QUESTION      tokenType = "?"
+	SEMICOLON     tokenType = ";"
+	SLASH         tokenType = "/"
+	STAR          tokenType = "*"
 
 	// One or two character tokens.
 

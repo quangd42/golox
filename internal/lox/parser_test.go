@@ -32,15 +32,41 @@ func Test_primary(t *testing.T) {
 			input: "this",
 			want:  thisExpr{keyword: newTokenNoLiteralType(THIS, 1, 0)},
 		},
+		{
+			desc:  "function_literal",
+			input: "fn(a, b) { return a + b; }",
+			want: functionExpr{
+				params: []token{
+					newToken(IDENTIFIER, "a", "a", 1, 3),
+					newToken(IDENTIFIER, "b", "b", 1, 6),
+				},
+				body: []stmt{
+					returnStmt{
+						keyword: newTokenNoLiteralType(RETURN, 1, 11),
+						value: binaryExpr{
+							left:     variableExpr{newToken(IDENTIFIER, "a", "a", 1, 18)},
+							operator: newTokenNoLiteralType(PLUS, 1, 20),
+							right:    variableExpr{newToken(IDENTIFIER, "b", "b", 1, 22)},
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:  "array_literal",
+			input: "[5, \"this string\"]",
+			want:  arrayExpr{[]expr{literalExpr{5}, literalExpr{"this string"}}},
+		},
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			scanner := NewScanner(nil, []byte(tC.input))
+			er := NewLoxErrorReporter()
+			scanner := NewScanner(er, []byte(tC.input))
 			tokens, err := scanner.ScanTokens()
 			if err != nil {
 				t.Error(err)
 			}
-			parser := NewParser(nil, tokens)
+			parser := NewParser(er, tokens)
 			got, err := parser.primary()
 			if err != nil {
 				t.Error(err)

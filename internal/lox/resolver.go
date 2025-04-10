@@ -1,7 +1,5 @@
 package lox
 
-type loopType bool
-
 type Resolver struct {
 	er           ErrorReporter
 	interpreter  *Interpreter
@@ -186,6 +184,19 @@ func (r *Resolver) visitSuperExpr(e superExpr) (any, error) {
 
 func (r *Resolver) visitFunctionExpr(e functionExpr) (any, error) {
 	return nil, r.resolveFunction(e, fnTypeFUNCTION)
+}
+
+func (r *Resolver) visitArrayExpr(e arrayExpr) (any, error) {
+	for _, item := range e.value {
+		r.resolveExpr(item)
+	}
+	return nil, nil
+}
+
+func (r *Resolver) visitIndexExpr(e indexExpr) (any, error) {
+	r.resolveExpr(e.callee)
+	r.resolveExpr(e.index)
+	return nil, nil
 }
 
 func (r *Resolver) visitExprStmt(s exprStmt) error {

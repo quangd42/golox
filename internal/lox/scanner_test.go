@@ -14,6 +14,7 @@ var text = `() <> >=
 23. "some more string" 156
 this and that or never false true
 return out
+[5, "some string"]
 `
 
 func Test_scanToken(t *testing.T) {
@@ -118,7 +119,13 @@ func TestScanTokens(t *testing.T) {
 				newToken(RETURN, "return", "return", 8, 144),
 				newToken(IDENTIFIER, "out", "out", 8, 151),
 
-				newToken(EOF, "", nil, 9, 155),
+				newToken(LEFT_BRACKET, "[", "[", 9, 155),
+				newToken(NUMBER, "5", 5, 9, 156),
+				newToken(COMMA, ",", ",", 9, 157),
+				newToken(STRING, "\"some string\"", "some string", 9, 159),
+				newToken(RIGHT_BRACKET, "]", "]", 9, 172),
+
+				newToken(EOF, "", nil, 10, 174),
 			},
 		},
 	}

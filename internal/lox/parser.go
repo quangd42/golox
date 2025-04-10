@@ -618,6 +618,63 @@ func (p *Parser) unary() (expr, error) {
 	return p.call()
 }
 
+/*
+primary → "true" | "false" | "nil" | "this"
+| NUMBER | STRING | IDENTIFIER | "(" expression ")"
+| "super" "." IDENTIFIER | "fn" "(" parameters? ")" block ;
+*/
+func (p *Parser) primary() (expr, error) {
+	tok, err := p.advance()
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case tok.hasType(TRUE):
+		return literalExpr{true}, nil
+	case tok.hasType(FALSE):
+		return literalExpr{false}, nil
+	case tok.hasType(NIL):
+		return literalExpr{nil}, nil
+	case tok.hasType(THIS):
+		return thisExpr{tok}, nil
+	case tok.hasType(NUMBER, STRING):
+		return literalExpr{tok.literal}, nil
+	case tok.hasType(IDENTIFIER):
+		return variableExpr{tok}, nil
+	case tok.hasType(LEFT_PAREN):
+		out, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+		if _, err := p.consume(RIGHT_PAREN, "Expect ')' after expression."); err != nil {
+			return nil, err
+		}
+		return groupingExpr{out}, nil
+	case tok.hasType(SUPER):
+		_, err := p.consume(DOT, "Expect '.' after 'super'.")
+		if err != nil {
+			return nil, err
+		}
+		method, err := p.consume(IDENTIFIER, "Expect superclass method name.")
+		if err != nil {
+			return nil, err
+		}
+		return superExpr{keyword: tok, method: method}, nil
+	case tok.hasType(FN):
+		return p.functionLiteral(fnTypeANONYMOUS)
+	case tok.hasType(LEFT_BRACKET):
+		return p.arrayLiteral()
+	case tok.hasType(SLASH, STAR, MINUS, PLUS, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BANG, BANG_EQUAL):
+		_, err := p.expression()
+		if err != nil {
+			return nil, err
+		}
+		return nil, p.er.ParseError(tok, "Expect left operand.")
+	default:
+		return nil, p.er.ParseError(tok, "Expect an expression.")
+	}
+}
+
 // call → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 // arguments → expression ( "," expression )* ;
 func (p *Parser) call() (expr, error) {
@@ -628,6 +685,11 @@ func (p *Parser) call() (expr, error) {
 	for {
 		if p.match(LEFT_PAREN) {
 			out, err = p.finishCall(out)
+			if err != nil {
+				return nil, err
+			}
+		} else if p.match(LEFT_BRACKET) {
+			out, err = p.index(out)
 			if err != nil {
 				return nil, err
 			}
@@ -678,6 +740,7 @@ func (p *Parser) finishCall(callee expr) (expr, error) {
 	return callExpr{callee: callee, paren: tok, arguments: args}, nil
 }
 
+// functionLiteral → "fn" "(" parameters? ")" block ;
 func (p *Parser) functionLiteral(ft fnType) (functionExpr, error) {
 	var errMsg string
 	switch ft {
@@ -719,59 +782,46 @@ func (p *Parser) functionLiteral(ft fnType) (functionExpr, error) {
 	return functionExpr{params: parameters, body: bodyStmts}, nil
 }
 
-/*
-primary → "true" | "false" | "nil" | "this"
-| NUMBER | STRING | IDENTIFIER | "(" expression ")"
-| "super" "." IDENTIFIER | "fn" "(" parameters? ")" block ;
-*/
-func (p *Parser) primary() (expr, error) {
-	tok, err := p.advance()
+// arrayLiteral → "[" arrayItems "]" ;
+// arrayItems → expression ( "," expression )* ;
+func (p *Parser) arrayLiteral() (arrayExpr, error) {
+	array := make([]expr, 0)
+	for !p.match(RIGHT_BRACKET) {
+		if len(array) >= 255 {
+			return arrayExpr{}, p.er.ParseError(p.peek(), "Can't have more than 255 items in array literal.")
+		}
+		item, err := p.assignment()
+		if err != nil {
+			return arrayExpr{}, err
+		}
+		array = append(array, item)
+		if p.match(COMMA) {
+			p.advance()
+		} else {
+			break
+		}
+	}
+	_, err := p.consume(RIGHT_BRACKET, "Expect ']' after array items.")
+	if err != nil {
+		return arrayExpr{}, err
+	}
+	return arrayExpr{value: array}, nil
+}
+
+func (p *Parser) index(callee expr) (expr, error) {
+	tok, err := p.consume(LEFT_BRACKET, "Expect '[' at indexing.")
 	if err != nil {
 		return nil, err
 	}
-	switch {
-	case tok.hasType(TRUE):
-		return literalExpr{true}, nil
-	case tok.hasType(FALSE):
-		return literalExpr{false}, nil
-	case tok.hasType(NIL):
-		return literalExpr{nil}, nil
-	case tok.hasType(THIS):
-		return thisExpr{tok}, nil
-	case tok.hasType(NUMBER, STRING):
-		return literalExpr{tok.literal}, nil
-	case tok.hasType(IDENTIFIER):
-		return variableExpr{tok}, nil
-	case tok.hasType(LEFT_PAREN):
-		out, err := p.expression()
-		if err != nil {
-			return nil, err
-		}
-		if _, err := p.consume(RIGHT_PAREN, "Expect ')' after expression."); err != nil {
-			return nil, err
-		}
-		return groupingExpr{out}, nil
-	case tok.hasType(SUPER):
-		_, err := p.consume(DOT, "Expect '.' after 'super'.")
-		if err != nil {
-			return nil, err
-		}
-		method, err := p.consume(IDENTIFIER, "Expect superclass method name.")
-		if err != nil {
-			return nil, err
-		}
-		return superExpr{keyword: tok, method: method}, nil
-	case tok.hasType(FN):
-		return p.functionLiteral(fnTypeANONYMOUS)
-	case tok.hasType(SLASH, STAR, MINUS, PLUS, GREATER, GREATER_EQUAL, LESS, LESS_EQUAL, BANG, BANG_EQUAL):
-		_, err := p.expression()
-		if err != nil {
-			return nil, err
-		}
-		return nil, p.er.ParseError(tok, "Expect left operand.")
-	default:
-		return nil, p.er.ParseError(tok, "Expect an expression.")
+	index, err := p.expression()
+	if err != nil {
+		return nil, err
 	}
+	_, err = p.consume(RIGHT_BRACKET, "Expect ']' after index expression.")
+	if err != nil {
+		return nil, err
+	}
+	return indexExpr{callee: callee, bracket: tok, index: index}, nil
 }
 
 func (p *Parser) synchronize() {

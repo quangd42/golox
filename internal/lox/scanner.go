@@ -51,6 +51,10 @@ func (s *Scanner) scanToken() error {
 		s.addToken(LEFT_PAREN, "(")
 	case ')':
 		s.addToken(RIGHT_PAREN, ")")
+	case '[':
+		s.addToken(LEFT_BRACKET, "[")
+	case ']':
+		s.addToken(RIGHT_BRACKET, "]")
 	case '{':
 		s.addToken(LEFT_BRACE, "{")
 	case '}':

@@ -11,20 +11,22 @@ import (
 )
 
 var ExprTypes = []string{
+	"Array: value []expr",
+	"Assign: name token, value expr",
 	"Binary: left expr, operator token, right expr",
 	"Call: callee expr, paren token, arguments []expr",
+	"Function: params []token, body []stmt",
 	"Get: object expr, name token",
 	"Grouping: expr expr",
-	"Function: params []token, body []stmt",
+	"Index: callee expr, bracket token, index expr",
 	"Literal: value any",
 	"Logical: left expr, operator token, right expr",
 	"Set: object expr, name token, value expr",
+	"Super: keyword token, method token",
+	"Ternary: condition expr, thenExpr expr, elseExpr expr",
 	"This: keyword token",
 	"Unary: operator token, right expr",
 	"Variable: name token",
-	"Assign: name token, value expr",
-	"Ternary: condition expr, thenExpr expr, elseExpr expr",
-	"Super: keyword token, method token",
 }
 
 var StmtTypes = []string{

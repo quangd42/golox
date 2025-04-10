@@ -1,0 +1,16 @@
+class BetterList {
+	init() {
+		this.val = ["item 1", "item 2", ["inner list"]];
+	}
+
+	get(i) {
+		if i < 0 or i > 2 {
+			return nil;
+		}
+		return this.val[i];
+	}
+}
+
+var list = BetterList();
+print list.get(2)[0];
+print list.get(-1);

@@ -2,3 +2,10 @@ var a = "this is some string";
 print a;
 print "sum: 23+3 is "; print 23+3;
 print "divide by 0: "; print 56/0;
+
+var array = [2, "some string"];
+var idx = array[0];
+print idx;
+
+var array2 = [];
+print array2[idx+2*10];
