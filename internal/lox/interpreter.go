@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 )
 
 type Interpreter struct {
@@ -16,7 +15,7 @@ type Interpreter struct {
 
 func NewInterpreter(er ErrorReporter) *Interpreter {
 	globals := newGlobalEnvironment()
-	defineClockFn(globals)
+	defineNativeFns(globals)
 	return &Interpreter{
 		er:      er,
 		globals: globals,
@@ -324,13 +323,21 @@ func (i *Interpreter) visitCallExpr(e callExpr) (any, error) {
 	if !ok {
 		return nil, NewRuntimeError(e.paren, "Can only call functions and classes.")
 	}
-	if function.arity() != len(args) {
+	if function.arity() == -1 {
+		if len(args) == 0 {
+			return nil, NewRuntimeError(e.paren, "Expected at least 1 arguments but got 0.")
+		}
+	} else if function.arity() != len(args) {
 		return nil, NewRuntimeError(
 			e.paren,
 			fmt.Sprintf("Expected %d arguments but got %d.", function.arity(), len(args)),
 		)
 	}
-	return function.call(i, args)
+	res, err := function.call(i, args)
+	if err != nil {
+		return nil, NewRuntimeError(e.paren, err.Error())
+	}
+	return res, err
 }
 
 func (i *Interpreter) visitTernaryExpr(e ternaryExpr) (any, error) {
@@ -419,14 +426,16 @@ func (i *Interpreter) visitFunctionExpr(e functionExpr) (any, error) {
 }
 
 func (i *Interpreter) visitArrayExpr(e arrayExpr) (any, error) {
-	out := make([]any, len(e.value))
+	out := newArray()
+	values := make([]any, len(e.value))
 	for idx, X := range e.value {
 		val, err := i.evaluate(X)
 		if err != nil {
 			return nil, err
 		}
-		out[idx] = val
+		values[idx] = val
 	}
+	out.Append(values...)
 	return out, nil
 }
 
@@ -435,24 +444,33 @@ func (i *Interpreter) visitIndexExpr(e indexExpr) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	index, err := i.evaluate(e.index)
+	array, ok := callee.(*array)
+	if ok {
+		return i.indexArray(e.bracket, array, e.index)
+	}
+	return nil, NewRuntimeError(e.bracket, "Can only index arrays.")
+}
+
+func (i *Interpreter) indexArray(bracket token, array *array, indexVal expr) (any, error) {
+	index, err := i.evaluate(indexVal)
 	if err != nil {
 		return nil, err
 	}
-	array, ok := callee.([]any)
-	if !ok {
-		return nil, NewRuntimeError(e.bracket, "Can only index arrays.")
-	}
 	indexInt, ok := index.(int)
 	if !ok {
-		return nil, NewRuntimeError(e.bracket, "Index must be an integer.")
+		return nil, NewRuntimeError(bracket, "Index must be an integer.")
 	}
-	if indexInt < 0 {
-		return nil, NewRuntimeError(e.bracket, fmt.Sprintf("Index out of range [%d].", indexInt))
-	} else if len(array) == 0 || indexInt > len(array) {
-		return nil, NewRuntimeError(e.bracket, fmt.Sprintf("Index out of range [%d] with length %d.", indexInt, len(array)))
+	switch {
+	case array.Len() == 0, indexInt > array.Len():
+		return nil, NewRuntimeError(bracket, fmt.Sprintf("Index out of range [%d] with length %d.", indexInt, array.Len()))
+	case indexInt < 0:
+		if -indexInt > array.Len() {
+			return nil, NewRuntimeError(bracket, fmt.Sprintf("Index out of range [%d] with length %d.", indexInt, array.Len()))
+		}
+		return array.Get(array.Len() + indexInt), nil
+	default:
+		return array.Get(indexInt), nil
 	}
-	return array[indexInt], nil
 }
 
 func (i *Interpreter) execute(s stmt) error {
@@ -626,14 +644,4 @@ func (i *Interpreter) visitClassStmt(s classStmt) error {
 	}
 	i.env.assign(s.name, newClass(s.name.lexeme, superclass, methods))
 	return nil
-}
-
-func defineClockFn(env *environment) {
-	env.define("clock", nativeFn{
-		arityFn: func() int { return 0 },
-		callFn: func(i *Interpreter, args []any) (any, error) {
-			return time.Now().Unix(), nil
-		},
-		stringFn: func() string { return "<native fn clock>" },
-	})
 }

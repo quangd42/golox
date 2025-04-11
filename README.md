@@ -6,13 +6,16 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
 ## Features
 
 - [x] Dynamic typing
-- [x] Data types: boolean, numbers, string, nil
+- [x] Data types: 
+  - [x] boolean, numbers, string, nil
+  - [x] **array, with builtin functions append(), len()
 - [x] Expressions:
   - [x] Arithmetics 
   - [x] **Concatenate string and number with '+'
   - [x] Comparison and equality
   - [x] Logical operators: and/or
   - [x] **Ternary ( ? : )
+  - [x] **Index expression (array\[idx\])
 - [x] Statements
   - [x] Print statement
   - [x] Expression statement
@@ -27,6 +30,7 @@ Interpreter for the Lox language from [Crafting Interpreters](https://craftingin
    - [x] Inheritance
    - [ ] Getters & Setters
 - [ ] Standard Library
+
 
 **: Addition to features covered in the book.
 

@@ -1,0 +1,29 @@
+class BetterList {
+	init() {
+		this.val = ["item 1", "item 2", [15, "inner list"]];
+	}
+
+	get(i) {
+		if i < 0 or i > this.len() {
+			return nil;
+		}
+		return this.val[i];
+	}
+
+	push(item) {
+		append(this.val, item);
+	}
+
+	len() {
+		return len(this.val);
+	}
+}
+
+var list = BetterList();
+print list.get(2)[1];
+print "length: " + list.len();
+append(list.val, 4, fn(){ return 5; });
+var five = list.get(4);
+print "item numero " + five();
+list.push(fn(){ print "and next one is 6"; });
+list.get(5)();

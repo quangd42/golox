@@ -708,7 +708,7 @@ func (p *Parser) call() (expr, error) {
 }
 
 func (p *Parser) finishCall(callee expr) (expr, error) {
-	_, err := p.consume(LEFT_PAREN, "Expect '(' at call.")
+	tok, err := p.consume(LEFT_PAREN, "Expect '(' at call.")
 	if err != nil {
 		return nil, err
 	}
@@ -733,7 +733,7 @@ func (p *Parser) finishCall(callee expr) (expr, error) {
 			}
 		}
 	}
-	tok, err := p.consume(RIGHT_PAREN, "Expect ')' after arguments.")
+	_, err = p.consume(RIGHT_PAREN, "Expect ')' after arguments.")
 	if err != nil {
 		return nil, err
 	}
